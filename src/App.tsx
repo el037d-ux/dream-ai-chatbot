@@ -127,7 +127,7 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
         style={{ background: "hsl(220 20% 5%)", border: "1px solid hsl(var(--neon-green)/0.25)" }}>
         {lines.map((l, i) => (
           <div key={i} className="animate-terminal-in mb-1"
-            style={{ color: l.includes("✓") ? "hsl(var(--neon-green))" : l.includes("искажённое") || l.includes("не авторизован") ? "hsl(var(--neon-red))" : "hsl(210 30% 70%)" }}>
+            style={{ color: (l ?? "").includes("✓") ? "hsl(var(--neon-green))" : (l ?? "").includes("искажённое") || (l ?? "").includes("не авторизован") ? "hsl(var(--neon-red))" : "hsl(210 30% 70%)" }}>
             {l}
           </div>
         ))}
