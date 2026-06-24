@@ -4,32 +4,32 @@
 
 @layer base {
   :root {
-    --background: 220 20% 7%;
-    --foreground: 210 30% 92%;
-    --card: 220 25% 10%;
-    --card-foreground: 210 30% 92%;
-    --popover: 220 25% 10%;
-    --popover-foreground: 210 30% 92%;
-    --primary: 155 80% 45%;
-    --primary-foreground: 220 20% 7%;
-    --secondary: 220 20% 15%;
-    --secondary-foreground: 210 30% 80%;
-    --muted: 220 20% 13%;
-    --muted-foreground: 210 20% 50%;
-    --accent: 50 100% 55%;
-    --accent-foreground: 220 20% 7%;
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 20% 18%;
-    --input: 220 20% 14%;
-    --ring: 155 80% 45%;
+    --background: 210 30% 97%;
+    --foreground: 220 25% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 12%;
+    --primary: 155 65% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 92%;
+    --secondary-foreground: 220 25% 20%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 40 95% 50%;
+    --accent-foreground: 220 25% 12%;
+    --destructive: 0 70% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 86%;
+    --input: 210 20% 90%;
+    --ring: 155 65% 38%;
     --radius: 0.75rem;
-    --neon-green: 155 80% 45%;
-    --neon-blue: 200 100% 55%;
-    --neon-yellow: 50 100% 55%;
-    --neon-red: 0 80% 60%;
-    --neon-purple: 270 70% 60%;
-    --luna-orange: 30 100% 60%;
+    --neon-green: 155 65% 35%;
+    --neon-blue: 210 85% 45%;
+    --neon-yellow: 40 95% 45%;
+    --neon-red: 0 70% 52%;
+    --neon-purple: 270 60% 52%;
+    --luna-orange: 30 90% 50%;
   }
 }
 
@@ -238,39 +238,40 @@ body::before {
 
 .neon-green {
   color: hsl(var(--neon-green));
-  text-shadow: 0 0 10px hsl(var(--neon-green) / 0.8);
+  text-shadow: none;
 }
 .neon-blue {
   color: hsl(var(--neon-blue));
-  text-shadow: 0 0 10px hsl(var(--neon-blue) / 0.8);
+  text-shadow: none;
 }
 .neon-yellow {
   color: hsl(var(--neon-yellow));
-  text-shadow: 0 0 10px hsl(var(--neon-yellow) / 0.8);
+  text-shadow: none;
 }
 .neon-red {
   color: hsl(var(--neon-red));
-  text-shadow: 0 0 10px hsl(var(--neon-red) / 0.8);
+  text-shadow: none;
 }
 .neon-purple {
   color: hsl(var(--neon-purple));
-  text-shadow: 0 0 10px hsl(var(--neon-purple) / 0.8);
+  text-shadow: none;
 }
 
 .game-card {
-  background: hsl(220 25% 10% / 0.9);
-  border: 1px solid hsl(155 80% 45% / 0.2);
+  background: hsl(0 0% 100% / 0.85);
+  border: 1px solid hsl(210 20% 86%);
   backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px hsl(220 20% 60% / 0.12);
   transition: all 0.2s ease;
 }
 .game-card:hover {
-  border-color: hsl(155 80% 45% / 0.5);
-  box-shadow: 0 0 20px hsl(155 80% 45% / 0.15);
+  border-color: hsl(155 65% 38% / 0.5);
+  box-shadow: 0 4px 20px hsl(155 65% 38% / 0.12);
 }
 
 .btn-primary {
   background: hsl(var(--neon-green));
-  color: hsl(220 20% 7%);
+  color: hsl(0 0% 100%);
   font-family: "Unbounded", sans-serif;
   font-size: 0.75rem;
   font-weight: 700;
@@ -278,15 +279,15 @@ body::before {
   transition: all 0.2s ease;
 }
 .btn-primary:hover {
-  background: hsl(155 80% 55%);
-  box-shadow: 0 0 20px hsl(var(--neon-green) / 0.5);
+  background: hsl(155 65% 32%);
+  box-shadow: 0 4px 16px hsl(var(--neon-green) / 0.35);
   transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: hsl(220 20% 15%);
-  border: 1px solid hsl(220 20% 25%);
-  color: hsl(210 30% 80%);
+  background: hsl(210 20% 93%);
+  border: 1px solid hsl(210 20% 82%);
+  color: hsl(220 25% 25%);
   font-family: "Unbounded", sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
@@ -294,18 +295,19 @@ body::before {
   transition: all 0.2s ease;
 }
 .btn-secondary:hover {
-  border-color: hsl(var(--neon-green) / 0.5);
+  border-color: hsl(var(--neon-green) / 0.6);
   color: hsl(var(--neon-green));
+  background: hsl(155 65% 38% / 0.06);
 }
 
 .luna-bubble {
-  background: hsl(30 100% 60% / 0.1);
-  border: 1px solid hsl(30 100% 60% / 0.3);
+  background: hsl(30 90% 50% / 0.08);
+  border: 1px solid hsl(30 90% 50% / 0.3);
   border-radius: 16px 16px 16px 4px;
 }
 
 .xp-bar {
-  background: hsl(220 20% 15%);
+  background: hsl(210 20% 88%);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -336,10 +338,11 @@ body::before {
 }
 
 .news-card {
-  background: hsl(220 25% 12%);
-  border: 1px solid hsl(220 20% 22%);
+  background: hsl(0 0% 100%);
+  border: 1px solid hsl(210 20% 86%);
   border-radius: 12px;
   padding: 1rem;
+  box-shadow: 0 1px 6px hsl(220 20% 60% / 0.08);
   transition: all 0.35s ease;
   position: relative;
   overflow: hidden;
@@ -358,9 +361,10 @@ body::before {
 }
 
 .chain-node {
-  background: hsl(220 25% 13%);
-  border: 1px solid hsl(220 20% 22%);
+  background: hsl(0 0% 100%);
+  border: 1px solid hsl(210 20% 86%);
   border-radius: 12px;
+  box-shadow: 0 1px 4px hsl(220 20% 60% / 0.08);
   transition: all 0.3s ease;
 }
 .chain-node.distorted {
@@ -380,8 +384,8 @@ body::before {
   transform: translateX(4px);
 }
 .feed-item.neutral {
-  background: hsl(220 20% 14%);
-  border-color: hsl(220 20% 22%);
+  background: hsl(210 20% 95%);
+  border-color: hsl(210 20% 86%);
 }
 .feed-item.engaging {
   background: hsl(var(--neon-blue) / 0.1);
@@ -396,10 +400,10 @@ body::before {
   width: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(220 20% 7%);
+  background: hsl(210 20% 93%);
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(220 20% 20%);
+  background: hsl(210 20% 75%);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {

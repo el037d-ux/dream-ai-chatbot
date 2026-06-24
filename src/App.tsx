@@ -52,7 +52,7 @@ function Luna({ mood, phrase }: { mood: LunaMood; phrase: string }) {
 function HUD({ xp, level, levelName }: { xp: number; level: number; levelName: string }) {
   return (
     <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3"
-      style={{ background: "hsl(220 20% 7% / 0.95)", borderBottom: "1px solid hsl(155 80% 45% / 0.2)", backdropFilter: "blur(12px)" }}>
+      style={{ background: "hsl(210 30% 97% / 0.95)", borderBottom: "1px solid hsl(210 20% 86%)", backdropFilter: "blur(12px)" }}>
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
         <div>
           <div className="font-unbounded text-xs neon-green tracking-widest">АГЕНТ КОГ. БЕЗОПАСНОСТИ</div>
@@ -124,10 +124,10 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
 
       {/* Terminal */}
       <div className="w-full max-w-lg game-card rounded-xl p-4 mb-6 font-mono text-xs"
-        style={{ background: "hsl(220 20% 5%)", border: "1px solid hsl(var(--neon-green)/0.25)" }}>
+        style={{ background: "hsl(210 20% 96%)", border: "1px solid hsl(155 65% 38% / 0.3)" }}>
         {lines.map((l, i) => (
           <div key={i} className="animate-terminal-in mb-1"
-            style={{ color: (l ?? "").includes("✓") ? "hsl(var(--neon-green))" : (l ?? "").includes("искажённое") || (l ?? "").includes("не авторизован") ? "hsl(var(--neon-red))" : "hsl(210 30% 70%)" }}>
+            style={{ color: (l ?? "").includes("✓") ? "hsl(var(--neon-green))" : (l ?? "").includes("искажённое") || (l ?? "").includes("не авторизован") ? "hsl(var(--neon-red))" : "hsl(220 20% 35%)" }}>
             {l}
           </div>
         ))}
@@ -515,7 +515,7 @@ function Level2({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n
             onDrop={() => handleDrop(i)}
           >
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-unbounded text-xs flex-shrink-0"
-              style={{ background: nodeNoises[i] ? "hsl(var(--neon-red)/0.2)" : "hsl(220 20% 18%)", color: nodeNoises[i] ? "hsl(var(--neon-red))" : "hsl(210 20% 50%)" }}>
+              style={{ background: nodeNoises[i] ? "hsl(var(--neon-red)/0.15)" : "hsl(210 20% 90%)", color: nodeNoises[i] ? "hsl(var(--neon-red))" : "hsl(220 15% 45%)" }}>
               {i + 1}
             </div>
             <div className="flex-1">
@@ -557,7 +557,7 @@ function Level2({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n
         </div>
       </div>
 
-      <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(220 20% 12%)", border: "1px solid hsl(220 20% 22%)" }}>
+      <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(210 20% 95%)", border: "1px solid hsl(210 20% 86%)" }}>
         <div className="font-unbounded text-xs text-muted-foreground mb-3">СТАТИСТИКА ДЛЯ ЗАГОЛОВКА:</div>
         <p className="text-sm font-ibm text-center" style={{ color: "hsl(var(--neon-yellow))" }}>
           «Уровень безработицы в регионе — <strong>4,2%</strong>» (данные за Q3)
@@ -674,7 +674,7 @@ function Level3({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n
             { icon: "🔍", name: "Поисковые алгоритмы", desc: "Ранжируют результаты не по истинности, а по релевантности твоей истории" },
             { icon: "🤖", name: "Рекомендации + ИИ", desc: "Нейросеть не думает о твоём благополучии — только о времени на экране" },
           ].map((p) => (
-            <div key={p.name} className="p-3 rounded-xl text-center" style={{ background: "hsl(220 20% 13%)", border: "1px solid hsl(270 70% 60% / 0.25)" }}>
+            <div key={p.name} className="p-3 rounded-xl text-center" style={{ background: "hsl(270 60% 97%)", border: "1px solid hsl(270 70% 60% / 0.25)" }}>
               <div className="text-3xl mb-2">{p.icon}</div>
               <div className="font-unbounded text-[10px] neon-purple mb-1">{p.name}</div>
               <div className="text-xs text-muted-foreground font-ibm">{p.desc}</div>
@@ -783,11 +783,11 @@ function Level3({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n
             : "Ты сохранил информационную экосистему. В реальном мире алгоритмы редко так себя ведут — им важна вовлечённость."}
         </p>
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-xl p-4" style={{ background: "hsl(220 20% 13%)", border: "1px solid hsl(220 20% 22%)" }}>
+          <div className="rounded-xl p-4" style={{ background: "hsl(155 40% 95%)", border: "1px solid hsl(155 40% 82%)" }}>
             <div className="font-unbounded text-2xl neon-green">{totalEngagement}</div>
             <div className="text-xs text-muted-foreground font-ibm">очков вовлечённости</div>
           </div>
-          <div className="rounded-xl p-4" style={{ background: "hsl(220 20% 13%)", border: "1px solid hsl(220 20% 22%)" }}>
+          <div className="rounded-xl p-4" style={{ background: "hsl(210 20% 95%)", border: "1px solid hsl(210 20% 86%)" }}>
             <div className="font-unbounded text-2xl" style={{ color: getBubbleColor() }}>{radicalismScore}</div>
             <div className="text-xs text-muted-foreground font-ibm">индекс радикализации</div>
           </div>
@@ -901,7 +901,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen relative" style={{ background: "linear-gradient(160deg, hsl(220 20% 5%) 0%, hsl(230 25% 8%) 100%)" }}>
+    <div className="min-h-screen relative" style={{ background: "linear-gradient(160deg, hsl(210 30% 97%) 0%, hsl(215 25% 93%) 100%)" }}>
       {/* HUD */}
       {screen !== "intro" && screen !== "final" && (
         <HUD xp={xp} level={levelNum} levelName={LEVEL_NAMES[screen]} />
