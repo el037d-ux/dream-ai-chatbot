@@ -40,8 +40,8 @@ function Luna({ mood, phrase }: { mood: LunaMood; phrase: string }) {
         {emoji}
       </div>
       {phrase && (
-        <div className="luna-bubble px-4 py-2 max-w-xs animate-slide-up">
-          <p className="text-sm font-ibm" style={{ color: "hsl(var(--luna-orange))" }}>{phrase}</p>
+        <div className="luna-bubble px-4 py-3 max-w-xs animate-slide-up">
+          <p className="text-base font-ibm font-medium" style={{ color: "hsl(25 90% 35%)" }}>{phrase}</p>
         </div>
       )}
     </div>
