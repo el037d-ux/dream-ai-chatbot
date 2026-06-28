@@ -52,7 +52,7 @@ export default function App() {
     return <BotBuilder botId={botId} onBack={() => setScreen("dashboard")} />;
   }
   if (screen === "dashboard" && user) {
-    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} />;
+    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} onGoHome={() => setScreen("landing")} />;
   }
   if (screen === "auth") {
     return <AuthPage onAuth={onAuth} />;

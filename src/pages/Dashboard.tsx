@@ -14,9 +14,10 @@ interface Props {
   user: { id: number; email: string; name: string };
   onLogout: () => void;
   onOpenBot: (id: number) => void;
+  onGoHome: () => void;
 }
 
-export default function Dashboard({ user, onLogout, onOpenBot }: Props) {
+export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props) {
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -68,7 +69,7 @@ export default function Dashboard({ user, onLogout, onOpenBot }: Props) {
           <div style={s.navItem}>🔗 Интеграции</div>
           <div style={s.navItem}>⚙️ Настройки</div>
           <div style={s.navDivider} />
-          <div style={s.navItem} onClick={() => window.location.href = "/"}>🏠 На главную</div>
+          <div style={s.navItem} onClick={onGoHome}>🏠 На главную</div>
         </nav>
         <div style={s.sidebarBottom}>
           <div style={s.userInfo}>
