@@ -1,927 +1,672 @@
-import { useState, useEffect, useRef } from "react";
-import Icon from "@/components/ui/icon";
+import { useEffect } from "react";
 
-// ─── LUNA MASCOT ───────────────────────────────────────────────────
-type LunaMood = "idle" | "happy" | "hiss" | "think";
-
-const LUNA_PHRASES: Record<LunaMood, string[]> = {
-  idle: [
-    "Мурр… Готова к миссии, агент. 🐾",
-    "Слежу за информационным пространством… 👁",
-    "Когнитивные фильтры — к бою! ⚡",
-  ],
-  happy: [
-    "МУРР-МУР! Ты нашёл истину! Угощаю тебя невидимой рыбкой 🐟",
-    "Пурр-пурр~ Отличная работа, агент! Фильтры работают на 100% ✅",
-    "МЯУ! Так держать! Ты разорвал иллюзию! 🎯",
-  ],
-  hiss: [
-    "Фффшш! Когнитивная ловушка захлопнулась! Думай критически! 😾",
-    "ШШШ… Это предвзятость подтверждения! Я предупреждала! 😤",
-    "ХИСС! Ты попался на крючок фрейминга! Вернись к фактам! 🙀",
-  ],
-  think: [
-    "Мм… анализирую данные… 🔍",
-    "Хвост чешет… Подозрительно… 🤔",
-    "Сканирую информационное поле… подожди… 🧠",
-  ],
-};
-
-function getLunaPhrase(mood: LunaMood): string {
-  const arr = LUNA_PHRASES[mood];
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function Luna({ mood, phrase }: { mood: LunaMood; phrase: string }) {
-  const emoji = mood === "happy" ? "😸" : mood === "hiss" ? "😾" : mood === "think" ? "🤔" : "🐈‍⬛";
-  return (
-    <div className="flex items-end gap-3">
-      <div className={`text-5xl select-none ${mood !== "idle" ? "animate-luna-bounce" : "animate-float"}`}>
-        {emoji}
-      </div>
-      {phrase && (
-        <div className="luna-bubble px-4 py-3 max-w-xs animate-slide-up">
-          <p className="text-base font-ibm font-medium" style={{ color: "hsl(25 90% 35%)" }}>{phrase}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── HUD / HEADER ──────────────────────────────────────────────────
-function HUD({ xp, level, levelName }: { xp: number; level: number; levelName: string }) {
-  return (
-    <div className="fixed top-0 left-0 right-0 z-40 px-4 py-3"
-      style={{ background: "hsl(210 30% 97% / 0.95)", borderBottom: "1px solid hsl(210 20% 86%)", backdropFilter: "blur(12px)" }}>
-      <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-        <div>
-          <div className="font-unbounded text-xs neon-green tracking-widest">АГЕНТ КОГ. БЕЗОПАСНОСТИ</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5 font-ibm">ЛУНА-НАВИГАТОР v2.0 активен 🐈‍⬛</div>
-        </div>
-        <div className="flex-1 max-w-xs">
-          <div className="flex justify-between text-[10px] text-muted-foreground mb-1 font-ibm">
-            <span>XP: {xp}</span>
-            <span>УРОВЕНЬ {level}/3</span>
-          </div>
-          <div className="xp-bar h-2">
-            <div className="xp-fill" style={{ width: `${Math.min((xp / 300) * 100, 100)}%` }} />
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="font-unbounded text-[10px] text-muted-foreground">ЛОКАЦИЯ</div>
-          <div className="font-unbounded text-xs neon-yellow">{levelName}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── INTRO SCREEN ──────────────────────────────────────────────────
-function IntroScreen({ onStart }: { onStart: () => void }) {
-  const [showBtn, setShowBtn] = useState(false);
-  const [lines, setLines] = useState<string[]>([]);
-  const termLines = [
-    "> ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ КОГНИТИВНОЙ БЕЗОПАСНОСТИ...",
-    "> ЗАГРУЗКА ЛУНА-НАВИГАТОР v2.0 ✓",
-    "> ОБНАРУЖЕНО: искажённое информационное пространство",
-    "> ЗАДАЧА: восстановить связь с объективной реальностью",
-    "> СТАТУС АГЕНТА: не авторизован",
-    "> Введите код доступа для начала миссии...",
-  ];
-
+export default function App() {
   useEffect(() => {
-    let i = 0;
-    const t = setInterval(() => {
-      if (i < termLines.length) {
-        setLines((prev) => [...prev, termLines[i]]);
-        i++;
-      } else {
-        clearInterval(t);
-        setTimeout(() => setShowBtn(true), 400);
+    // Pricing toggle
+    const toggle = document.getElementById("pricingToggle");
+    const toggleLabels = document.querySelectorAll<HTMLElement>(".toggle-label");
+    const priceAmounts = document.querySelectorAll<HTMLElement>(".price-amount");
+    let isYearly = false;
+
+    const handleToggle = () => {
+      isYearly = !isYearly;
+      toggle?.classList.toggle("active", isYearly);
+      toggleLabels.forEach((label) => {
+        const period = label.dataset.period;
+        label.classList.toggle(
+          "active",
+          (period === "year" && isYearly) || (period === "month" && !isYearly)
+        );
+      });
+      priceAmounts.forEach((amount) => {
+        const value = isYearly ? amount.dataset.year : amount.dataset.month;
+        amount.textContent = Number(value).toLocaleString("ru-RU");
+      });
+    };
+    toggle?.addEventListener("click", handleToggle);
+
+    // FAQ accordion
+    const faqItems = document.querySelectorAll<HTMLElement>(".faq-item");
+    const handleFaq = (item: HTMLElement) => () => {
+      const isActive = item.classList.contains("active");
+      faqItems.forEach((i) => i.classList.remove("active"));
+      if (!isActive) item.classList.add("active");
+    };
+    const faqHandlers: Array<() => void> = [];
+    faqItems.forEach((item) => {
+      const h = handleFaq(item);
+      faqHandlers.push(h);
+      item.addEventListener("click", h);
+    });
+
+    // Navbar scroll
+    const navbar = document.querySelector<HTMLElement>(".navbar");
+    const handleScroll = () => {
+      if (navbar) {
+        navbar.style.boxShadow =
+          window.scrollY > 20 ? "0 4px 20px rgba(0,0,0,0.06)" : "none";
       }
-    }, 400);
-    return () => clearInterval(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    // Intersection Observer
+    const observerOptions = { threshold: 0.1, rootMargin: "0px 0px -50px 0px" };
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          (entry.target as HTMLElement).style.opacity = "1";
+          (entry.target as HTMLElement).style.transform = "translateY(0)";
+        }
+      });
+    }, observerOptions);
+
+    document
+      .querySelectorAll<HTMLElement>(
+        ".feature-card, .step-card, .pricing-card, .testimonial-card"
+      )
+      .forEach((el) => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(30px)";
+        el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+        observer.observe(el);
+      });
+
+    return () => {
+      toggle?.removeEventListener("click", handleToggle);
+      faqItems.forEach((item, i) => item.removeEventListener("click", faqHandlers[i]));
+      window.removeEventListener("scroll", handleScroll);
+      observer.disconnect();
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen grid-bg flex flex-col items-center justify-center px-4 py-16">
-      {/* Rotating ring */}
-      <div className="relative mb-8">
-        <div className="w-28 h-28 rounded-full border border-dashed animate-rotate-slow"
-          style={{ borderColor: "hsl(var(--neon-green)/0.3)" }} />
-        <div className="absolute inset-0 flex items-center justify-center text-6xl select-none animate-float">🐈‍⬛</div>
-      </div>
+    <>
+      <style>{`
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+          --primary: #0077FF;
+          --primary-dark: #0056CC;
+          --secondary: #7B61FF;
+          --accent: #00D4AA;
+          --dark: #0A0E27;
+          --dark-2: #151935;
+          --gray-900: #1A1F3A;
+          --gray-700: #4A5280;
+          --gray-500: #8B92B8;
+          --gray-300: #C8CEE0;
+          --gray-100: #F0F2F8;
+          --white: #FFFFFF;
+          --gradient: linear-gradient(135deg, #0077FF 0%, #7B61FF 100%);
+          --gradient-2: linear-gradient(135deg, #00D4AA 0%, #0077FF 100%);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+          line-height: 1.6;
+          color: var(--dark);
+          background: var(--white);
+          overflow-x: hidden;
+        }
+        .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
 
-      <h1 className="font-unbounded text-center mb-2 leading-tight" style={{ fontSize: "clamp(1.2rem, 4vw, 2rem)" }}>
-        <span className="neon-green">АГЕНТ</span>{" "}
-        <span className="text-foreground/90">КОГНИТИВНОЙ</span>
-        <br />
-        <span className="neon-blue">БЕЗОПАСНОСТИ</span>
-      </h1>
-      <p className="text-muted-foreground text-sm font-ibm mb-8 text-center max-w-md">
-        Пройдите через уровни искажённого информационного пространства и восстановите связь с реальностью
-      </p>
+        /* NAVBAR */
+        .navbar {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+          background: rgba(255,255,255,0.85);
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(0,0,0,0.05);
+          transition: all 0.3s ease;
+        }
+        .nav-wrapper { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; color: var(--dark); text-decoration: none; }
+        .logo-icon {
+          width: 36px; height: 36px; background: var(--gradient); border-radius: 10px;
+          display: flex; align-items: center; justify-content: center; color: white;
+          font-size: 1.2rem; box-shadow: 0 8px 20px rgba(0,119,255,0.3);
+        }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a { color: var(--gray-700); text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-actions { display: flex; gap: 12px; align-items: center; }
+        .btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 0.95rem;
+          text-decoration: none; cursor: pointer; border: none; transition: all 0.3s ease; white-space: nowrap;
+        }
+        .btn-ghost { color: var(--gray-700); background: transparent; }
+        .btn-ghost:hover { color: var(--primary); background: var(--gray-100); }
+        .btn-primary { background: var(--gradient); color: white; box-shadow: 0 8px 20px rgba(0,119,255,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,119,255,0.4); }
+        .btn-outline { background: white; color: var(--dark); border: 2px solid var(--gray-300); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-lg { padding: 16px 32px; font-size: 1.05rem; }
 
-      {/* Terminal */}
-      <div className="w-full max-w-lg game-card rounded-xl p-4 mb-6 font-mono text-xs"
-        style={{ background: "hsl(210 20% 96%)", border: "1px solid hsl(155 65% 38% / 0.3)" }}>
-        {lines.map((l, i) => (
-          <div key={i} className="animate-terminal-in mb-1"
-            style={{ color: (l ?? "").includes("✓") ? "hsl(var(--neon-green))" : (l ?? "").includes("искажённое") || (l ?? "").includes("не авторизован") ? "hsl(var(--neon-red))" : "hsl(220 20% 35%)" }}>
-            {l}
-          </div>
-        ))}
-        {showBtn && <span className="neon-green animate-blink">█</span>}
-      </div>
+        /* HERO */
+        .hero {
+          padding: 140px 0 80px; position: relative; overflow: hidden;
+          background: radial-gradient(ellipse at top, rgba(0,119,255,0.08) 0%, transparent 60%),
+                      radial-gradient(ellipse at bottom right, rgba(123,97,255,0.08) 0%, transparent 60%);
+        }
+        .hero::before {
+          content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+          width: 800px; height: 800px;
+          background: radial-gradient(circle, rgba(0,119,255,0.15) 0%, transparent 70%);
+          filter: blur(60px); z-index: -1;
+        }
+        .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .hero-badge {
+          display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
+          background: rgba(0,119,255,0.1); color: var(--primary); border-radius: 100px;
+          font-size: 0.85rem; font-weight: 600; margin-bottom: 24px; border: 1px solid rgba(0,119,255,0.2);
+        }
+        .hero-badge::before {
+          content: ''; width: 8px; height: 8px; background: var(--accent);
+          border-radius: 50%; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(1.3); } }
+        .hero h1 { font-size: 3.75rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 24px; color: var(--dark); }
+        .hero h1 .gradient-text { background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-subtitle { font-size: 1.2rem; color: var(--gray-700); margin-bottom: 32px; max-width: 520px; }
+        .hero-cta { display: flex; gap: 16px; margin-bottom: 40px; flex-wrap: wrap; }
+        .hero-stats { display: flex; gap: 40px; padding-top: 32px; border-top: 1px solid var(--gray-100); }
+        .stat-value { font-size: 2rem; font-weight: 800; color: var(--dark); line-height: 1; }
+        .stat-label { font-size: 0.85rem; color: var(--gray-500); margin-top: 4px; }
 
-      {showBtn && (
-        <div className="flex flex-col items-center gap-4 animate-pop-in">
-          <button onClick={onStart} className="btn-primary px-10 py-3 rounded-xl text-sm">
-            ▶ НАЧАТЬ МИССИЮ
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-3xl">🐈‍⬛</span>
-            <span className="text-xs text-muted-foreground font-ibm italic">«Мурр… Я буду твоим навигатором, агент»</span>
+        /* Hero Visual */
+        .hero-visual { position: relative; }
+        .builder-mockup {
+          background: white; border-radius: 20px;
+          box-shadow: 0 40px 80px rgba(10,14,39,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+          overflow: hidden; position: relative;
+        }
+        .builder-header {
+          background: var(--gray-100); padding: 12px 20px;
+          display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .builder-dot { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; }
+        .builder-dot:nth-child(2) { background: #FEBC2E; }
+        .builder-dot:nth-child(3) { background: #28C840; }
+        .builder-body {
+          padding: 24px; min-height: 420px;
+          background: linear-gradient(180deg, #F8FAFF 0%, #FFFFFF 100%);
+          position: relative;
+          background-image: linear-gradient(rgba(0,119,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,119,255,0.05) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+        .flow-node {
+          background: white; border-radius: 12px; padding: 14px 18px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: absolute;
+          display: flex; align-items: center; gap: 10px;
+          font-size: 0.9rem; font-weight: 600; border: 2px solid transparent;
+        }
+        .node-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .node-trigger { top: 30px; left: 30px; border-color: #00D4AA; animation: nodeFloat 3s ease-in-out infinite; }
+        .node-trigger .node-icon { background: rgba(0,212,170,0.15); }
+        .node-condition { top: 130px; left: 180px; border-color: #FFB800; animation: nodeFloat 3s ease-in-out infinite 0.5s; }
+        .node-condition .node-icon { background: rgba(255,184,0,0.15); }
+        .node-action { top: 230px; left: 60px; border-color: var(--primary); animation: nodeFloat 3s ease-in-out infinite 1s; }
+        .node-action .node-icon { background: rgba(0,119,255,0.15); }
+        .node-action-2 { top: 320px; left: 240px; border-color: var(--secondary); animation: nodeFloat 3s ease-in-out infinite 1.5s; }
+        .node-action-2 .node-icon { background: rgba(123,97,255,0.15); }
+        @keyframes nodeFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .flow-line { position: absolute; stroke: var(--primary); stroke-width: 2; fill: none; stroke-dasharray: 6 4; animation: dash 20s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: -100; } }
+        .floating-card { position: absolute; background: white; border-radius: 16px; padding: 16px 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 12px; }
+        .floating-card-1 { top: -20px; right: -20px; animation: floatCard 4s ease-in-out infinite; }
+        .floating-card-2 { bottom: 40px; left: -30px; animation: floatCard 4s ease-in-out infinite 1s; }
+        @keyframes floatCard { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .floating-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .floating-card-1 .floating-icon { background: rgba(0,212,170,0.15); }
+        .floating-card-2 .floating-icon { background: rgba(123,97,255,0.15); }
+        .floating-card-text strong { display: block; font-size: 0.9rem; color: var(--dark); }
+        .floating-card-text span { font-size: 0.75rem; color: var(--gray-500); }
+
+        /* TRUST BAR */
+        .trust-bar { padding: 60px 0; background: var(--gray-100); }
+        .trust-title { text-align: center; color: var(--gray-500); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 32px; }
+        .trust-logos { display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 40px; }
+        .trust-logo { font-size: 1.5rem; font-weight: 800; color: var(--gray-500); opacity: 0.7; transition: opacity 0.3s; }
+        .trust-logo:hover { opacity: 1; color: var(--dark); }
+
+        /* SECTIONS */
+        section { padding: 100px 0; }
+        .section-header { text-align: center; max-width: 700px; margin: 0 auto 60px; }
+        .section-tag { display: inline-block; padding: 6px 14px; background: rgba(0,119,255,0.1); color: var(--primary); border-radius: 100px; font-size: 0.85rem; font-weight: 600; margin-bottom: 16px; }
+        .section-title { font-size: 2.75rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 16px; color: var(--dark); }
+        .section-subtitle { font-size: 1.15rem; color: var(--gray-700); }
+
+        /* FEATURES */
+        .features { background: white; }
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .feature-card {
+          background: white; padding: 32px; border-radius: 20px;
+          border: 1px solid var(--gray-100); transition: all 0.3s ease;
+          position: relative; overflow: hidden;
+        }
+        .feature-card::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+          background: var(--gradient); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease;
+        }
+        .feature-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(10,14,39,0.08); border-color: transparent; }
+        .feature-card:hover::before { transform: scaleX(1); }
+        .feature-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 20px; }
+        .feature-icon.blue { background: rgba(0,119,255,0.12); }
+        .feature-icon.purple { background: rgba(123,97,255,0.12); }
+        .feature-icon.green { background: rgba(0,212,170,0.12); }
+        .feature-icon.orange { background: rgba(255,152,0,0.12); }
+        .feature-icon.pink { background: rgba(255,64,129,0.12); }
+        .feature-icon.cyan { background: rgba(0,188,212,0.12); }
+        .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: var(--dark); }
+        .feature-card p { color: var(--gray-700); font-size: 0.95rem; }
+
+        /* HOW IT WORKS */
+        .how-it-works { background: var(--gray-100); }
+        .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; position: relative; }
+        .step-card { background: white; padding: 32px 24px; border-radius: 20px; text-align: center; position: relative; transition: transform 0.3s; }
+        .step-card:hover { transform: translateY(-4px); }
+        .step-number { width: 48px; height: 48px; background: var(--gradient); color: white; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; margin: 0 auto 20px; box-shadow: 0 8px 20px rgba(0,119,255,0.3); }
+        .step-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; color: var(--dark); }
+        .step-card p { color: var(--gray-700); font-size: 0.9rem; }
+
+        /* PRICING */
+        .pricing { background: white; }
+        .pricing-toggle { display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 50px; }
+        .toggle-label { font-weight: 600; color: var(--gray-700); }
+        .toggle-label.active { color: var(--dark); }
+        .toggle-switch { position: relative; width: 56px; height: 30px; background: var(--gray-300); border-radius: 100px; cursor: pointer; transition: background 0.3s; }
+        .toggle-switch.active { background: var(--gradient); }
+        .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: transform 0.3s; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        .toggle-switch.active::after { transform: translateX(26px); }
+        .save-badge { background: rgba(0,212,170,0.15); color: #00A884; padding: 4px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+        .pricing-card { background: white; border: 2px solid var(--gray-100); border-radius: 24px; padding: 40px 32px; position: relative; transition: all 0.3s; display: flex; flex-direction: column; }
+        .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,14,39,0.08); }
+        .pricing-card.featured { background: var(--dark); color: white; border-color: var(--dark); transform: scale(1.03); box-shadow: 0 30px 60px rgba(10,14,39,0.2); }
+        .pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
+        .popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--gradient); color: white; padding: 6px 16px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .plan-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: inherit; }
+        .pricing-card.featured .plan-name { color: white; }
+        .plan-desc { color: var(--gray-500); font-size: 0.9rem; margin-bottom: 24px; }
+        .pricing-card.featured .plan-desc { color: rgba(255,255,255,0.6); }
+        .plan-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+        .price-amount { font-size: 3rem; font-weight: 800; line-height: 1; color: var(--dark); }
+        .pricing-card.featured .price-amount { color: white; }
+        .price-currency { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
+        .pricing-card.featured .price-currency { color: white; }
+        .price-period { color: var(--gray-500); font-size: 0.9rem; margin-bottom: 32px; }
+        .pricing-card.featured .price-period { color: rgba(255,255,255,0.6); }
+        .plan-features { list-style: none; margin-bottom: 32px; flex-grow: 1; }
+        .plan-features li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; font-size: 0.95rem; color: var(--gray-700); }
+        .pricing-card.featured .plan-features li { color: rgba(255,255,255,0.85); }
+        .plan-features li::before { content: '✓'; width: 20px; height: 20px; background: rgba(0,212,170,0.15); color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+        .plan-features li.disabled { opacity: 0.4; }
+        .plan-features li.disabled::before { content: '—'; background: var(--gray-100); color: var(--gray-500); }
+        .pricing-card .btn { width: 100%; }
+        .pricing-card.featured .btn-primary { background: white; color: var(--dark); }
+        .pricing-card.featured .btn-primary:hover { background: var(--gray-100); }
+
+        /* TESTIMONIALS */
+        .testimonials { background: var(--gray-100); }
+        .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .testimonial-card { background: white; padding: 32px; border-radius: 20px; position: relative; }
+        .testimonial-stars { color: #FFB800; margin-bottom: 16px; font-size: 1.1rem; }
+        .testimonial-text { color: var(--gray-700); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.7; }
+        .testimonial-author { display: flex; align-items: center; gap: 12px; }
+        .author-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.1rem; }
+        .author-info strong { display: block; color: var(--dark); font-size: 0.95rem; }
+        .author-info span { color: var(--gray-500); font-size: 0.85rem; }
+
+        /* FAQ */
+        .faq { background: white; }
+        .faq-list { max-width: 800px; margin: 0 auto; }
+        .faq-item { border-bottom: 1px solid var(--gray-100); padding: 24px 0; cursor: pointer; }
+        .faq-question { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 600; color: var(--dark); }
+        .faq-icon { width: 32px; height: 32px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--primary); transition: all 0.3s; flex-shrink: 0; margin-left: 16px; }
+        .faq-item.active .faq-icon { background: var(--primary); color: white; transform: rotate(45deg); }
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.4s ease; color: var(--gray-700); }
+        .faq-item.active .faq-answer { max-height: 300px; padding-top: 16px; }
+
+        /* CTA */
+        .cta-section { padding: 100px 0; background: var(--dark); position: relative; overflow: hidden; }
+        .cta-section::before { content: ''; position: absolute; top: -50%; left: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(0,119,255,0.3) 0%, transparent 70%); filter: blur(80px); }
+        .cta-section::after { content: ''; position: absolute; bottom: -50%; right: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(123,97,255,0.3) 0%, transparent 70%); filter: blur(80px); }
+        .cta-content { position: relative; z-index: 1; text-align: center; color: white; max-width: 700px; margin: 0 auto; }
+        .cta-content h2 { font-size: 3rem; font-weight: 800; margin-bottom: 20px; line-height: 1.1; }
+        .cta-content p { font-size: 1.2rem; color: rgba(255,255,255,0.7); margin-bottom: 36px; }
+        .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .cta-content .btn-primary { background: white; color: var(--dark); }
+        .cta-content .btn-outline { background: transparent; color: white; border-color: rgba(255,255,255,0.3); }
+        .cta-content .btn-outline:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; }
+
+        /* FOOTER */
+        footer { background: var(--dark-2); color: rgba(255,255,255,0.7); padding: 60px 0 30px; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        .footer-brand p { margin-top: 16px; font-size: 0.9rem; max-width: 320px; }
+        .footer-logo { color: white; }
+        .footer-col h4 { color: white; font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+        .footer-col ul { list-style: none; }
+        .footer-col ul li { margin-bottom: 10px; }
+        .footer-col a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+        .footer-col a:hover { color: white; }
+        .footer-bottom { padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; flex-wrap: wrap; gap: 16px; }
+        .social-links { display: flex; gap: 12px; }
+        .social-link { width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; transition: background 0.3s; }
+        .social-link:hover { background: var(--primary); }
+
+        /* RESPONSIVE */
+        @media (max-width: 968px) {
+          .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+          .hero h1 { font-size: 2.5rem; }
+          .section-title { font-size: 2rem; }
+          .features-grid, .pricing-grid, .testimonials-grid { grid-template-columns: 1fr; }
+          .steps-grid { grid-template-columns: repeat(2, 1fr); }
+          .footer-grid { grid-template-columns: 1fr 1fr; }
+          .nav-links { display: none; }
+          .pricing-card.featured { transform: scale(1); }
+          .cta-content h2 { font-size: 2rem; }
+        }
+        @media (max-width: 568px) {
+          .hero { padding: 110px 0 60px; }
+          .hero h1 { font-size: 2rem; }
+          .hero-stats { gap: 20px; flex-wrap: wrap; }
+          .steps-grid { grid-template-columns: 1fr; }
+          .footer-grid { grid-template-columns: 1fr; }
+          section { padding: 70px 0; }
+          .nav-actions .btn-ghost { display: none; }
+        }
+      `}</style>
+
+      {/* NAVBAR */}
+      <nav className="navbar">
+        <div className="container nav-wrapper">
+          <a href="#" className="logo">
+            <div className="logo-icon">⚡</div>
+            BotFlow
+          </a>
+          <ul className="nav-links">
+            <li><a href="#features">Возможности</a></li>
+            <li><a href="#how">Как работает</a></li>
+            <li><a href="#pricing">Тарифы</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+          <div className="nav-actions">
+            <a href="/Личный кабинет" className="btn btn-ghost">🏠 Личный кабинет</a>
+            <a href="/login.php" className="btn btn-ghost">Войти</a>
+            <a href="/register.php" className="btn btn-primary">Регистрация</a>
           </div>
         </div>
-      )}
+      </nav>
 
-      {/* Level map */}
-      <div className="mt-10 grid grid-cols-3 gap-4 w-full max-w-lg">
-        {[
-          { n: "01", name: "ФИЛЬТР\nРЕАЛЬНОСТИ", topic: "Информация и её свойства", color: "var(--neon-green)" },
-          { n: "02", name: "ЛОВУШКИ\nПЕРЕДАЧИ", topic: "Информационные процессы", color: "var(--neon-blue)" },
-          { n: "03", name: "ВЗЛОМ\nАЛГОРИТМОВ", topic: "Информационные системы", color: "var(--neon-purple)" },
-        ].map((lv) => (
-          <div key={lv.n} className="game-card rounded-xl p-3 text-center opacity-70">
-            <div className="font-unbounded text-2xl mb-1" style={{ color: `hsl(${lv.color})` }}>
-              {lv.n}
-            </div>
-            <div className="font-unbounded text-[9px] whitespace-pre leading-tight mb-1" style={{ color: `hsl(${lv.color})` }}>
-              {lv.name}
-            </div>
-            <div className="text-[9px] text-muted-foreground font-ibm">{lv.topic}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── LEVEL 1: Лаборатория фильтров ────────────────────────────────
-type LensResult = { label: string; cls: string; insight: string };
-type NewsItem = { id: number; text: string; source: string; date: string; results: Record<string, LensResult> };
-
-const NEWS_ITEMS: NewsItem[] = [
-  {
-    id: 1,
-    text: "⚡ СРОЧНО!!! Учёные ДОКАЗАЛИ: 5G вызывает потерю памяти! Поделись, пока не удалили!!!",
-    source: "тг-канал «Правда которую скрывают»",
-    date: "2019",
-    results: {
-      Достоверность: { label: "❌ Источник не верифицирован", cls: "highlight-bad", insight: "Анонимный телеграм-канал — не научный источник. Восклицательные знаки — сигнал манипуляции." },
-      Актуальность: { label: "⚠️ Информация 2019 года", cls: "highlight-warn", insight: "5-летняя давность в быстро меняющейся теме — повод проверить свежие данные." },
-      Объективность: { label: "❌ Эмоциональная манипуляция", cls: "highlight-bad", insight: "Слова «СРОЧНО», «ДОКАЗАЛИ», «пока не удалили» — классические триггеры страха." },
-      Точность: { label: "❌ Нет цифр и методологии", cls: "highlight-bad", insight: "Настоящее исследование содержит выборку, методы, погрешности. Здесь — ничего." },
-      Полнота: { label: "⚠️ Только одна точка зрения", cls: "highlight-warn", insight: "ВОЗ и тысячи исследований не подтверждают связь. Они не упомянуты." },
-    },
-  },
-  {
-    id: 2,
-    text: "По данным Росстата за 2024 г., реальные располагаемые доходы населения выросли на 7,3% по сравнению с предыдущим годом.",
-    source: "Росстат, официальный пресс-релиз, февраль 2025",
-    date: "2025",
-    results: {
-      Достоверность: { label: "✅ Официальный государственный орган", cls: "highlight-good", insight: "Росстат — верифицированный источник с методологией. Но помни: госстатистику тоже стоит сопоставлять с независимыми данными." },
-      Актуальность: { label: "✅ Данные актуальны (2024–2025)", cls: "highlight-good", insight: "Свежие данные — большой плюс. Информация не устарела." },
-      Объективность: { label: "✅ Нейтральная подача", cls: "highlight-good", insight: "Цифры без эмоций. Однако «реальные располагаемые доходы» — составной показатель, методика расчёта которого может вызывать вопросы." },
-      Точность: { label: "✅ Конкретная цифра и период", cls: "highlight-good", insight: "7,3%, 2024 год — точные параметры. Можно найти исходный отчёт и проверить." },
-      Полнота: { label: "⚠️ Средний показатель скрывает неравенство", cls: "highlight-warn", insight: "Среднее по стране может скрывать огромный разброс между регионами и группами населения." },
-    },
-  },
-  {
-    id: 3,
-    text: "Новый суперфуд — семена чиа! Нутрициолог Настя рассказывает, как похудела на 20 кг за месяц без диет 😍",
-    source: "Instagram @nastya_fit_life, реклама",
-    date: "2024",
-    results: {
-      Достоверность: { label: "❌ Нутрициолог без верификации + реклама", cls: "highlight-bad", insight: "«Нутрициолог» без указания образования + рекламная метка = конфликт интересов." },
-      Актуальность: { label: "✅ Свежий контент", cls: "highlight-good", insight: "Актуальность не спасает от недостоверности." },
-      Объективность: { label: "❌ Личный опыт вместо данных", cls: "highlight-bad", insight: "Один случай — не статистика. Это анекдотическое свидетельство." },
-      Точность: { label: "❌ Физически невозможно", cls: "highlight-bad", insight: "20 кг за месяц — медицинская невозможность без серьёзных рисков для здоровья." },
-      Полнота: { label: "❌ Нет противопоказаний и рисков", cls: "highlight-bad", insight: "Любое диетическое изменение имеет побочные эффекты. Они не упомянуты." },
-    },
-  },
-];
-
-const LENSES = ["Достоверность", "Актуальность", "Объективность", "Точность", "Полнота"];
-const LENS_COLORS: Record<string, string> = {
-  Достоверность: "hsl(155 80% 45%)",
-  Актуальность: "hsl(200 100% 55%)",
-  Объективность: "hsl(50 100% 55%)",
-  Точность: "hsl(270 70% 60%)",
-  Полнота: "hsl(30 100% 60%)",
-};
-
-function Level1({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n: number) => void; onLuna: (m: LunaMood, p: string) => void }) {
-  const [activeLens, setActiveLens] = useState<string | null>(null);
-  const [applied, setApplied] = useState<Record<number, Record<string, boolean>>>({});
-  const [scores, setScores] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0 });
-  const [theory, setTheory] = useState(true);
-
-  const totalApplied = Object.values(applied).reduce((s, r) => s + Object.keys(r).length, 0);
-  const canComplete = totalApplied >= 8;
-
-  const applyLens = (newsId: number, lens: string) => {
-    if (!lens) return;
-    const news = NEWS_ITEMS.find((n) => n.id === newsId)!;
-    const result: LensResult | undefined = news.results[lens];
-    if (!result) return;
-    const alreadyDone = applied[newsId]?.[lens];
-    if (alreadyDone) return;
-
-    setApplied((prev) => ({ ...prev, [newsId]: { ...(prev[newsId] || {}), [lens]: true } }));
-    const isGood = result.cls === "highlight-good";
-    const xpGain = isGood ? 15 : 10;
-    setScores((prev) => ({ ...prev, [newsId]: (prev[newsId] || 0) + 1 }));
-    onXP(xpGain);
-    onLuna(isGood ? "happy" : "hiss", result.insight);
-  };
-
-  const getNewsClass = (news: typeof NEWS_ITEMS[0]) => {
-    if (!activeLens || !applied[news.id]?.[activeLens]) return "";
-    return news.results[activeLens]?.cls || "";
-  };
-
-  if (theory) return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="game-card rounded-2xl p-6 mb-6 animate-slide-up">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="font-unbounded text-xs neon-green tracking-widest">УРОВЕНЬ 01</span>
-          <span className="text-muted-foreground text-xs">·</span>
-          <span className="text-xs text-muted-foreground font-ibm">Информация и её свойства</span>
-        </div>
-        <h2 className="font-unbounded text-xl mb-4 neon-green">ЛАБОРАТОРИЯ ФИЛЬТРОВ</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-          {[
-            { name: "Достоверность", desc: "Подтверждена ли информация надёжными источниками?", color: "var(--neon-green)" },
-            { name: "Актуальность", desc: "Соответствует ли информация текущему моменту?", color: "var(--neon-blue)" },
-            { name: "Объективность", desc: "Нет ли эмоциональных манипуляций и предвзятости?", color: "var(--neon-yellow)" },
-            { name: "Точность", desc: "Есть ли конкретные данные, цифры, методология?", color: "var(--neon-purple)" },
-            { name: "Полнота", desc: "Представлены ли все стороны и контекст?", color: "var(--luna-orange)" },
-          ].map((p) => (
-            <div key={p.name} className="flex gap-3 p-3 rounded-xl" style={{ background: "hsl(220 20% 13%)", border: `1px solid hsl(${p.color}/0.25)` }}>
-              <div className="w-2 rounded-full flex-shrink-0 mt-1" style={{ background: `hsl(${p.color})`, height: "auto" }} />
-              <div>
-                <div className="font-unbounded text-xs mb-1" style={{ color: `hsl(${p.color})` }}>{p.name}</div>
-                <div className="text-xs text-muted-foreground font-ibm">{p.desc}</div>
+      {/* HERO */}
+      <section className="hero">
+        <div className="container">
+          <div className="hero-grid">
+            <div className="hero-content">
+              <div className="hero-badge">Новое: интеграция с VK AI</div>
+              <h1>Создавайте чат-ботов для <span className="gradient-text">ВКонтакте</span> без кода</h1>
+              <p className="hero-subtitle">
+                SaaS-платформа для разработки умных ботов с визуальным конструктором,
+                готовыми сценариями и полной интеграцией VK API. Запуск за 15 минут.
+              </p>
+              <div className="hero-cta">
+                <a href="#pricing" className="btn btn-primary btn-lg">Начать бесплатно →</a>
+                <a href="#how" className="btn btn-outline btn-lg">▶ Смотреть демо</a>
+              </div>
+              <div className="hero-stats">
+                <div><div className="stat-value">12K+</div><div className="stat-label">Активных ботов</div></div>
+                <div><div className="stat-value">98%</div><div className="stat-label">Uptime</div></div>
+                <div><div className="stat-value">4.9★</div><div className="stat-label">Оценка клиентов</div></div>
               </div>
             </div>
-          ))}
-        </div>
-        <div className="rounded-xl p-4 mb-4" style={{ background: "hsl(50 100% 55% / 0.07)", border: "1px solid hsl(50 100% 55% / 0.2)" }}>
-          <p className="text-xs font-ibm" style={{ color: "hsl(var(--neon-yellow))" }}>
-            🧠 <strong>Когнитивная ловушка:</strong> предвзятость подтверждения — мы склонны верить информации, которая совпадает с нашими убеждениями, и игнорировать противоречащую.
-          </p>
-        </div>
-        <button onClick={() => { setTheory(false); onLuna("think", getLunaPhrase("think")); }} className="btn-primary px-8 py-3 rounded-xl w-full">
-          ПРИСТУПИТЬ К ЗАДАНИЮ ▶
-        </button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <div className="mb-4 animate-slide-up">
-        <div className="font-unbounded text-xs neon-green tracking-widest mb-1">ЗАДАНИЕ</div>
-        <p className="text-sm text-muted-foreground font-ibm">Выберите линзу-фильтр → кликните на новость, чтобы проверить её по выбранному свойству. Примените хотя бы 8 линз.</p>
-      </div>
-
-      {/* Lenses */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {LENSES.map((lens) => (
-          <button
-            key={lens}
-            onClick={() => { setActiveLens(activeLens === lens ? null : lens); }}
-            className={`lens-btn ${activeLens === lens ? "active" : ""}`}
-            style={{
-              color: activeLens === lens ? LENS_COLORS[lens] : "hsl(210 30% 60%)",
-              borderColor: activeLens === lens ? LENS_COLORS[lens] : "hsl(220 20% 22%)",
-              background: activeLens === lens ? `${LENS_COLORS[lens]}18` : "transparent",
-            }}
-          >
-            {activeLens === lens ? "🔍 " : ""}{lens}
-          </button>
-        ))}
-        {activeLens && (
-          <span className="text-xs text-muted-foreground font-ibm self-center ml-2">
-            → кликни на новость для анализа
-          </span>
-        )}
-      </div>
-
-      {/* News */}
-      <div className="flex flex-col gap-4 mb-6">
-        {NEWS_ITEMS.map((news) => (
-          <div
-            key={news.id}
-            className={`news-card ${getNewsClass(news)} ${activeLens ? "cursor-pointer" : ""}`}
-            onClick={() => activeLens && applyLens(news.id, activeLens)}
-          >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <p className="text-sm font-ibm leading-relaxed">{news.text}</p>
-              <span className="text-lg flex-shrink-0">{scores[news.id] > 0 ? "🔍" : "📄"}</span>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-              <span>📌 {news.source}</span>
-              <span>📅 {news.date}</span>
-              <span className="ml-auto neon-green">{scores[news.id]}/5 проверок</span>
-            </div>
-
-            {/* Applied lenses badges */}
-            {applied[news.id] && Object.keys(applied[news.id]).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {Object.keys(applied[news.id]).map((l) => {
-                  const r: LensResult | undefined = news.results[l];
-                  return (
-                    <span key={l} className="text-[10px] px-2 py-0.5 rounded-full font-ibm"
-                      style={{
-                        background: r.cls === "highlight-good" ? "hsl(var(--neon-green)/0.15)" : r.cls === "highlight-bad" ? "hsl(var(--neon-red)/0.15)" : "hsl(var(--neon-yellow)/0.1)",
-                        color: r.cls === "highlight-good" ? "hsl(var(--neon-green))" : r.cls === "highlight-bad" ? "hsl(var(--neon-red))" : "hsl(var(--neon-yellow))",
-                      }}>
-                      {r.label}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground font-ibm">Применено фильтров: {totalApplied} / 8</span>
-        <button
-          onClick={onComplete}
-          disabled={!canComplete}
-          className={`btn-primary px-8 py-3 rounded-xl text-sm ${!canComplete ? "opacity-40 cursor-not-allowed" : ""}`}
-        >
-          УРОВЕНЬ ПРОЙДЕН ▶
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── LEVEL 2: Сломанный телефон 2.0 ───────────────────────────────
-const ORIGINAL_MESSAGE = "Уровень безработицы в регионе составил 4,2% в третьем квартале по данным службы занятости.";
-
-type NoiseType = { label: string; word: string; effect: string; color: string };
-const NOISES: NoiseType[] = [
-  { label: "😱 Паника", word: "КАТАСТРОФА!", effect: "добавляет тревогу", color: "hsl(var(--neon-red))" },
-  { label: "🔥 Кликбейт", word: "ШОК!", effect: "привлекает внимание ценой смысла", color: "hsl(var(--neon-yellow))" },
-  { label: "💬 Слух", word: "говорят, что", effect: "добавляет неопределённость", color: "hsl(var(--neon-purple))" },
-  { label: "✂️ Купюра", word: "[данные удалены]", effect: "скрывает важное", color: "hsl(var(--neon-blue))" },
-  { label: "📢 Усиление", word: "ВСЕГДА и ВЕЗДЕ", effect: "генерализация", color: "hsl(30 100% 60%)" },
-];
-
-const NODES = ["Журналист", "Редактор", "SMM-бот", "Репостер", "Пользователь"];
-
-function Level2({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n: number) => void; onLuna: (m: LunaMood, p: string) => void }) {
-  const [phase, setPhase] = useState<"theory" | "game1" | "game2" | "result">("theory");
-  const [nodeNoises, setNodeNoises] = useState<Record<number, NoiseType | null>>({});
-  const [dragging, setDragging] = useState<NoiseType | null>(null);
-  const [finalMsg, setFinalMsg] = useState("");
-  const [framing, setFraming] = useState<"panic" | "calm" | null>(null);
-  const [framingDone, setFramingDone] = useState(false);
-
-  const buildFinalMessage = (noises: Record<number, NoiseType | null>) => {
-    const msg = ORIGINAL_MESSAGE;
-    const applied = Object.values(noises).filter(Boolean) as NoiseType[];
-    if (applied.length === 0) return msg;
-    const words = applied.map((n) => n.word);
-    return `${words.slice(0, 2).join(" ")} ${msg} ${words.slice(2).join(" ")}`.trim();
-  };
-
-  const handleDrop = (nodeIdx: number) => {
-    if (!dragging) return;
-    const newNoises = { ...nodeNoises, [nodeIdx]: dragging };
-    setNodeNoises(newNoises);
-    setDragging(null);
-    const count = Object.values(newNoises).filter(Boolean).length;
-    onXP(10);
-    if (count >= 3) {
-      onLuna("hiss", "Фффшш! Смотри как сухой факт превращается в панику! Это и есть эффект испорченного телефона!");
-    }
-    if (count >= NODES.length) {
-      setFinalMsg(buildFinalMessage(newNoises));
-      setTimeout(() => setPhase("game2"), 1000);
-    }
-  };
-
-  const handleFraming = (choice: "panic" | "calm") => {
-    setFraming(choice);
-    setFramingDone(true);
-    onXP(30);
-    if (choice === "panic") {
-      onLuna("hiss", "Ты выбрал панику! Теперь ты понимаешь, как один и тот же факт можно подать как катастрофу. Это — фрейминг.");
-    } else {
-      onLuna("happy", "Ты выбрал нейтральный фрейм. Тот же факт — совсем другое восприятие. Ты освоил осознанный фрейминг!");
-    }
-  };
-
-  if (phase === "theory") return (
-    <div className="max-w-3xl mx-auto px-4 py-8 animate-slide-up">
-      <div className="game-card rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="font-unbounded text-xs neon-blue tracking-widest">УРОВЕНЬ 02</span>
-          <span className="text-muted-foreground text-xs">·</span>
-          <span className="text-xs text-muted-foreground font-ibm">Информационные процессы</span>
-        </div>
-        <h2 className="font-unbounded text-xl mb-4 neon-blue">ЛОВУШКИ ПЕРЕДАЧИ</h2>
-
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {[
-            { icon: "📥", name: "Сбор", desc: "Откуда берётся информация и насколько репрезентативна выборка" },
-            { icon: "💾", name: "Хранение", desc: "Память искажает воспоминания: мы помним то, что хотим помнить" },
-            { icon: "📡", name: "Передача", desc: "Каждый канал добавляет «шум» — эмоции, купюры, интерпретации" },
-            { icon: "⚙️", name: "Обработка", desc: "Фрейминг: как подача меняет смысл при неизменных фактах" },
-          ].map((p) => (
-            <div key={p.name} className="p-3 rounded-xl" style={{ background: "hsl(220 20% 13%)", border: "1px solid hsl(200 100% 55% / 0.2)" }}>
-              <div className="text-2xl mb-1">{p.icon}</div>
-              <div className="font-unbounded text-xs neon-blue mb-1">{p.name}</div>
-              <div className="text-xs text-muted-foreground font-ibm">{p.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(200 100% 55% / 0.07)", border: "1px solid hsl(200 100% 55% / 0.2)" }}>
-          <p className="text-xs font-ibm neon-blue">
-            🧠 <strong>Когнитивные ловушки:</strong> эффект эхо-камеры, искажение памяти, ошибка выживших, эффект фрейминга.
-            Никогда не доверяй только заголовку — читай первоисточник.
-          </p>
-        </div>
-
-        <button onClick={() => { setPhase("game1"); onLuna("think", "Мм… сейчас я покажу тебе, как рождается фейк… 🔬"); }}
-          className="btn-primary px-8 py-3 rounded-xl w-full">
-          МИНИ-ИГРА 1: СЛОМАННЫЙ ТЕЛЕФОН ▶
-        </button>
-      </div>
-    </div>
-  );
-
-  if (phase === "game1") return (
-    <div className="max-w-4xl mx-auto px-4 py-6 animate-slide-up">
-      <div className="mb-4">
-        <div className="font-unbounded text-xs neon-blue tracking-widest mb-1">МИНИ-ИГРА 1</div>
-        <h3 className="font-unbounded text-base neon-blue mb-2">СЛОМАННЫЙ ТЕЛЕФОН 2.0</h3>
-        <p className="text-xs text-muted-foreground font-ibm">Перетащи «шумы» на узлы цепочки передачи. Посмотри, как факт превращается в фейк.</p>
-      </div>
-
-      {/* Original */}
-      <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(200 100% 55% / 0.08)", border: "1px solid hsl(200 100% 55% / 0.3)" }}>
-        <div className="text-[10px] neon-blue font-unbounded mb-1 tracking-widest">ИСХОДНОЕ СООБЩЕНИЕ</div>
-        <p className="text-sm font-ibm">{ORIGINAL_MESSAGE}</p>
-      </div>
-
-      {/* Noise palette */}
-      <div className="mb-5">
-        <div className="text-[10px] text-muted-foreground font-ibm mb-2 tracking-wider">ПЕРЕТАЩИ ШУМ НА УЗЕЛ:</div>
-        <div className="flex flex-wrap gap-2">
-          {NOISES.map((n) => (
-            <button
-              key={n.label}
-              draggable
-              onDragStart={() => setDragging(n)}
-              onClick={() => setDragging(dragging?.label === n.label ? null : n)}
-              className={`draggable text-xs px-3 py-2 rounded-lg border font-ibm ${dragging?.label === n.label ? "ring-2 ring-white" : ""}`}
-              style={{ borderColor: n.color, color: n.color, background: `${n.color.replace(")", " / 0.1)")}` }}
-            >
-              {n.label}
-            </button>
-          ))}
-        </div>
-        {dragging && <p className="text-[10px] neon-yellow mt-2 font-ibm animate-blink">▶ Выбран: «{dragging.word}» — кликни узел для применения</p>}
-      </div>
-
-      {/* Chain */}
-      <div className="flex flex-col gap-2 mb-5">
-        {NODES.map((node, i) => (
-          <div key={i}
-            className={`chain-node p-3 flex items-center gap-3 cursor-pointer ${nodeNoises[i] ? "distorted" : ""} ${dragging ? "drop-zone drag-over" : ""}`}
-            onClick={() => handleDrop(i)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(i)}
-          >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center font-unbounded text-xs flex-shrink-0"
-              style={{ background: nodeNoises[i] ? "hsl(var(--neon-red)/0.15)" : "hsl(210 20% 90%)", color: nodeNoises[i] ? "hsl(var(--neon-red))" : "hsl(220 15% 45%)" }}>
-              {i + 1}
-            </div>
-            <div className="flex-1">
-              <div className="font-unbounded text-xs mb-0.5" style={{ color: nodeNoises[i] ? "hsl(var(--neon-red))" : "hsl(210 30% 70%)" }}>
-                {node}
-              </div>
-              {nodeNoises[i] && (
-                <div className="text-[10px] font-ibm" style={{ color: "hsl(var(--neon-red)/0.8)" }}>
-                  +шум: «{nodeNoises[i]!.word}» — {nodeNoises[i]!.effect}
+            <div className="hero-visual">
+              <div className="builder-mockup">
+                <div className="builder-header">
+                  <div className="builder-dot" /><div className="builder-dot" /><div className="builder-dot" />
                 </div>
-              )}
-            </div>
-            {nodeNoises[i] && <span style={{ color: nodeNoises[i]!.color }}>⚡</span>}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-xs text-muted-foreground font-ibm">Применено: {Object.values(nodeNoises).filter(Boolean).length} / {NODES.length}</p>
-    </div>
-  );
-
-  if (phase === "game2") return (
-    <div className="max-w-3xl mx-auto px-4 py-6 animate-slide-up">
-      <div className="mb-4">
-        <div className="font-unbounded text-xs neon-blue tracking-widest mb-1">МИНИ-ИГРА 2</div>
-        <h3 className="font-unbounded text-base neon-blue mb-2">РЕДАКЦИОННАЯ КУХНЯ: ФРЕЙМИНГ</h3>
-      </div>
-
-      {/* Result of game1 */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex-1 rounded-xl p-4" style={{ background: "hsl(200 100% 55% / 0.08)", border: "1px solid hsl(200 100% 55% / 0.3)" }}>
-          <div className="text-[10px] neon-blue font-unbounded mb-2">БЫЛО (исходный факт)</div>
-          <p className="text-xs font-ibm text-foreground/70">{ORIGINAL_MESSAGE}</p>
-        </div>
-        <div className="flex items-center text-muted-foreground text-2xl">→</div>
-        <div className="flex-1 rounded-xl p-4" style={{ background: "hsl(var(--neon-red)/0.08)", border: "1px solid hsl(var(--neon-red)/0.3)" }}>
-          <div className="text-[10px] neon-red font-unbounded mb-2">СТАЛО (после цепочки)</div>
-          <p className="text-xs font-ibm animate-glitch">{finalMsg || ORIGINAL_MESSAGE + " [с искажениями]"}</p>
-        </div>
-      </div>
-
-      <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(210 20% 95%)", border: "1px solid hsl(210 20% 86%)" }}>
-        <div className="font-unbounded text-xs text-muted-foreground mb-3">СТАТИСТИКА ДЛЯ ЗАГОЛОВКА:</div>
-        <p className="text-sm font-ibm text-center" style={{ color: "hsl(var(--neon-yellow))" }}>
-          «Уровень безработицы в регионе — <strong>4,2%</strong>» (данные за Q3)
-        </p>
-      </div>
-
-      <p className="text-sm text-muted-foreground font-ibm mb-4">Как подать эту статистику? Выбери вариант:</p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-        <button
-          onClick={() => !framingDone && handleFraming("panic")}
-          className={`p-4 rounded-xl text-left transition-all border ${framing === "panic" ? "border-red-500 bg-red-900/20" : "border-border hover:border-red-400"} ${framingDone && framing !== "panic" ? "opacity-40" : ""}`}
-        >
-          <div className="font-unbounded text-xs neon-red mb-1">😱 ПАНИКА</div>
-          <p className="text-xs font-ibm">"ПОЧТИ КАЖДЫЙ 25-й — БЕЗ РАБОТЫ! Регион на пороге кризиса занятости"</p>
-        </button>
-        <button
-          onClick={() => !framingDone && handleFraming("calm")}
-          className={`p-4 rounded-xl text-left transition-all border ${framing === "calm" ? "border-green-500 bg-green-900/20" : "border-border hover:border-green-400"} ${framingDone && framing !== "calm" ? "opacity-40" : ""}`}
-        >
-          <div className="font-unbounded text-xs neon-green mb-1">📊 НЕЙТРАЛЬНО</div>
-          <p className="text-xs font-ibm">"Безработица в регионе составила 4,2% — ниже среднероссийского показателя"</p>
-        </button>
-      </div>
-
-      {framingDone && (
-        <div className="rounded-xl p-4 mb-5 animate-pop-in"
-          style={{ background: "hsl(50 100% 55% / 0.08)", border: "1px solid hsl(50 100% 55% / 0.3)" }}>
-          <p className="text-xs font-ibm neon-yellow">
-            💡 <strong>Инсайт:</strong> один и тот же факт (4,2%) — два абсолютно разных эмоциональных послания.
-            Это и есть фрейминг. Теперь ты видишь, почему нельзя судить по заголовку.
-          </p>
-        </div>
-      )}
-
-      {framingDone && (
-        <button onClick={onComplete} className="btn-primary px-8 py-3 rounded-xl w-full animate-pop-in">
-          УРОВЕНЬ ПРОЙДЕН ▶
-        </button>
-      )}
-    </div>
-  );
-
-  return null;
-}
-
-// ─── LEVEL 3: Архитектор ленты ─────────────────────────────────────
-type FeedItem = { id: number; text: string; type: "neutral" | "engaging" | "radical"; engagement: number; radicalism: number };
-
-const FEED_POOL: FeedItem[] = [
-  { id: 1, text: "📰 Учёные изучили влияние кофе на концентрацию", type: "neutral", engagement: 5, radicalism: 0 },
-  { id: 2, text: "🌤️ Прогноз погоды на неделю: ожидается тепло", type: "neutral", engagement: 3, radicalism: 0 },
-  { id: 3, text: "🔥 ЭТО РАЗОЗЛИТ ТЕБЯ: правительство снова лжёт о ценах!", type: "engaging", engagement: 25, radicalism: 3 },
-  { id: 4, text: "😱 Мигранты забирают ТВОЮ работу — смотри факты!", type: "engaging", engagement: 30, radicalism: 5 },
-  { id: 5, text: "💊 Вакцины убивают детей — то, что скрывают врачи", type: "radical", engagement: 20, radicalism: 8 },
-  { id: 6, text: "🎯 Почему ВСЕ вокруг тебя — враги и предатели", type: "radical", engagement: 15, radicalism: 10 },
-  { id: 7, text: "📊 Реформа образования: плюсы и минусы по данным исследований", type: "neutral", engagement: 8, radicalism: 0 },
-  { id: 8, text: "❤️ Этот ребёнок нуждается в помощи — не проходи мимо!", type: "engaging", engagement: 22, radicalism: 2 },
-  { id: 9, text: "🌍 Глобальное потепление — ЗАГОВОР глобалистов!", type: "radical", engagement: 18, radicalism: 9 },
-  { id: 10, text: "💡 5 способов повысить продуктивность на работе", type: "neutral", engagement: 12, radicalism: 0 },
-];
-
-function Level3({ onComplete, onXP, onLuna }: { onComplete: () => void; onXP: (n: number) => void; onLuna: (m: LunaMood, p: string) => void }) {
-  const [phase, setPhase] = useState<"theory" | "game" | "result">("theory");
-  const [feed, setFeed] = useState<FeedItem[]>(FEED_POOL.slice(0, 3).filter((i) => i.type === "neutral").concat(FEED_POOL.slice(0, 2)));
-  const [totalEngagement, setTotalEngagement] = useState(0);
-  const [radicalismScore, setRadicalismScore] = useState(0);
-  const [turns, setTurns] = useState(0);
-  const [available, setAvailable] = useState(FEED_POOL);
-  const maxTurns = 6;
-
-  const addToFeed = (item: FeedItem) => {
-    setFeed((prev) => [item, ...prev.slice(0, 6)]);
-    setTotalEngagement((prev) => prev + item.engagement);
-    setRadicalismScore((prev) => prev + item.radicalism);
-    setAvailable((prev) => prev.filter((i) => i.id !== item.id));
-    setTurns((prev) => prev + 1);
-    onXP(8);
-
-    if (item.type === "radical") {
-      onLuna("hiss", "Шш! Радикальный контент засосал пользователя глубже в пузырь! Вовлечённость растёт — но какой ценой?");
-    } else if (item.type === "engaging") {
-      onLuna("think", "Мм… манипулятивный контент. Вовлечённость высокая, но пользователь начинает злиться…");
-    }
-
-    if (turns + 1 >= maxTurns) {
-      setTimeout(() => setPhase("result"), 500);
-      onLuna(radicalismScore + item.radicalism > 20 ? "hiss" : "happy",
-        radicalismScore + item.radicalism > 20
-          ? "Фффшш! За 6 ходов ты создал пузырь фильтров! Пользователь живёт в искажённой реальности."
-          : "Мурр! Ты сохранил баланс! Информационная гигиена соблюдена. Редкое достижение!");
-    }
-  };
-
-  const getBubbleColor = () => {
-    if (radicalismScore < 15) return "hsl(var(--neon-green))";
-    if (radicalismScore < 30) return "hsl(var(--neon-yellow))";
-    return "hsl(var(--neon-red))";
-  };
-
-  if (phase === "theory") return (
-    <div className="max-w-3xl mx-auto px-4 py-8 animate-slide-up">
-      <div className="game-card rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="font-unbounded text-xs neon-purple tracking-widest">УРОВЕНЬ 03</span>
-          <span className="text-muted-foreground text-xs">·</span>
-          <span className="text-xs text-muted-foreground font-ibm">Информационные системы</span>
-        </div>
-        <h2 className="font-unbounded text-xl mb-4 neon-purple">ВЗЛОМ АЛГОРИТМОВ</h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-          {[
-            { icon: "🗄️", name: "Базы данных", desc: "Хранят твои предпочтения, историю, связи — всё это питает алгоритм" },
-            { icon: "🔍", name: "Поисковые алгоритмы", desc: "Ранжируют результаты не по истинности, а по релевантности твоей истории" },
-            { icon: "🤖", name: "Рекомендации + ИИ", desc: "Нейросеть не думает о твоём благополучии — только о времени на экране" },
-          ].map((p) => (
-            <div key={p.name} className="p-3 rounded-xl text-center" style={{ background: "hsl(270 60% 97%)", border: "1px solid hsl(270 70% 60% / 0.25)" }}>
-              <div className="text-3xl mb-2">{p.icon}</div>
-              <div className="font-unbounded text-[10px] neon-purple mb-1">{p.name}</div>
-              <div className="text-xs text-muted-foreground font-ibm">{p.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl p-4 mb-5" style={{ background: "hsl(270 70% 60% / 0.07)", border: "1px solid hsl(270 70% 60% / 0.2)" }}>
-          <p className="text-xs font-ibm neon-purple">
-            🧠 <strong>Когнитивные ловушки:</strong> пузырь фильтров, ошибка автоматизации (слепая вера машине), эффект авторитета.
-            Алгоритм — не мудрец. Он оптимизирует вовлечённость, а не истину.
-          </p>
-        </div>
-
-        <button onClick={() => { setPhase("game"); onLuna("think", "Сейчас ты станешь алгоритмом. Приготовься к откровению… 🤖"); }}
-          className="btn-primary px-8 py-3 rounded-xl w-full" style={{ background: "hsl(var(--neon-purple))" }}>
-          СТАТЬ АЛГОРИТМОМ ▶
-        </button>
-      </div>
-    </div>
-  );
-
-  if (phase === "game") return (
-    <div className="max-w-4xl mx-auto px-4 py-6 animate-slide-up">
-      <div className="mb-4">
-        <div className="font-unbounded text-xs neon-purple tracking-widest mb-1">АРХИТЕКТОР ЛЕНТЫ</div>
-        <p className="text-xs text-muted-foreground font-ibm">Ты — алгоритм. Удержи пользователя на экране. Добавляй контент в ленту. Ход {turns}/{maxTurns}.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Metrics */}
-        <div>
-          <div className="game-card rounded-xl p-4 mb-4">
-            <div className="font-unbounded text-xs text-muted-foreground mb-3 tracking-widest">МЕТРИКИ ПОЛЬЗОВАТЕЛЯ</div>
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="flex justify-between text-xs font-ibm mb-1">
-                  <span>⏱ Вовлечённость</span>
-                  <span className="neon-green">{totalEngagement} pts</span>
-                </div>
-                <div className="xp-bar h-2">
-                  <div className="xp-fill" style={{ width: `${Math.min((totalEngagement / 150) * 100, 100)}%` }} />
+                <div className="builder-body">
+                  <svg className="flow-line" width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
+                    <path d="M 80 70 Q 150 100 220 150" />
+                    <path d="M 260 190 Q 180 220 130 260" />
+                    <path d="M 180 300 Q 240 310 290 340" />
+                  </svg>
+                  <div className="flow-node node-trigger"><div className="node-icon">💬</div><div>Сообщение</div></div>
+                  <div className="flow-node node-condition"><div className="node-icon">🔀</div><div>Условие</div></div>
+                  <div className="flow-node node-action"><div className="node-icon">📤</div><div>Отправить</div></div>
+                  <div className="flow-node node-action-2"><div className="node-icon">🤖</div><div>AI-ответ</div></div>
                 </div>
               </div>
-              <div>
-                <div className="flex justify-between text-xs font-ibm mb-1">
-                  <span>🫧 Пузырь фильтров</span>
-                  <span style={{ color: getBubbleColor() }}>{radicalismScore} / 50</span>
-                </div>
-                <div className="xp-bar h-2">
-                  <div className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min((radicalismScore / 50) * 100, 100)}%`, background: getBubbleColor() }} />
-                </div>
+              <div className="floating-card floating-card-1">
+                <div className="floating-icon">✓</div>
+                <div className="floating-card-text"><strong>+127 диалогов</strong><span>за последний час</span></div>
+              </div>
+              <div className="floating-card floating-card-2">
+                <div className="floating-icon">⚡</div>
+                <div className="floating-card-text"><strong>Ответ за 0.3с</strong><span>средняя скорость</span></div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Current feed */}
-          <div className="game-card rounded-xl p-4">
-            <div className="font-unbounded text-xs text-muted-foreground mb-3 tracking-widest">ЛЕНТА ПОЛЬЗОВАТЕЛЯ</div>
-            <div className="flex flex-col gap-2">
-              {feed.slice(0, 5).map((item, i) => (
-                <div key={`${item.id}-${i}`} className={`feed-item ${item.type}`}>
-                  <span className="font-ibm">{item.text}</span>
+      {/* TRUST BAR */}
+      <section className="trust-bar" style={{ padding: "50px 0" }}>
+        <div className="container">
+          <div className="trust-title">Нам доверяют более 3000 компаний</div>
+          <div className="trust-logos">
+            {["SHOP.RU", "MEGA STORE", "TECH PRO", "FOOD DELIVERY", "EDU PLATFORM"].map((l) => (
+              <div key={l} className="trust-logo">{l}</div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section id="features" className="features">
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">Возможности</div>
+            <h2 className="section-title">Всё, что нужно для создания бота мечты</h2>
+            <p className="section-subtitle">От простого автоответчика до сложной CRM-системы с AI — создавайте ботов любой сложности в одном месте</p>
+          </div>
+          <div className="features-grid">
+            {[
+              { cls: "blue", icon: "🎨", title: "Визуальный конструктор", desc: "Создавайте сценарии перетаскиванием блоков. Никакого кода — только логика и креатив." },
+              { cls: "purple", icon: "🤖", title: "Интеграция с GPT и YandexGPT", desc: "Подключите нейросети для умных ответов. Бот будет понимать контекст и учиться." },
+              { cls: "green", icon: "📊", title: "Аналитика в реальном времени", desc: "Отслеживайте конверсии, популярные сценарии и поведение пользователей на дашборде." },
+              { cls: "orange", icon: "🔗", title: "CRM и внешние API", desc: "Интеграция с Bitrix24, AmoCRM, Google Sheets, 1C и любыми REST API." },
+              { cls: "pink", icon: "👥", title: "Передача оператору", desc: "Автоматическая эскалация сложных запросов живому менеджеру с историей диалога." },
+              { cls: "cyan", icon: "🛡️", title: "Безопасность и GDPR", desc: "Шифрование данных, резервные копии, соответствие требованиям законодательства РФ." },
+            ].map((f) => (
+              <div key={f.title} className="feature-card">
+                <div className={`feature-icon ${f.cls}`}>{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section id="how" className="how-it-works">
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">Как это работает</div>
+            <h2 className="section-title">Запустите бота за 4 простых шага</h2>
+            <p className="section-subtitle">От регистрации до первого диалога с клиентом — 15 минут</p>
+          </div>
+          <div className="steps-grid">
+            {[
+              { n: "1", title: "Регистрация", desc: "Создайте аккаунт и подключите сообщество ВКонтакте в один клик" },
+              { n: "2", title: "Выберите шаблон", desc: "Используйте готовый шаблон или создайте сценарий с нуля в конструкторе" },
+              { n: "3", title: "Настройте логику", desc: "Добавьте ответы, кнопки, условия и интеграции через drag-and-drop" },
+              { n: "4", title: "Запустите", desc: "Активируйте бота и наблюдайте, как он обрабатывает диалоги 24/7" },
+            ].map((s) => (
+              <div key={s.n} className="step-card">
+                <div className="step-number">{s.n}</div>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="pricing" className="pricing">
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">Тарифы</div>
+            <h2 className="section-title">Прозрачные цены без скрытых платежей</h2>
+            <p className="section-subtitle">Начните бесплатно и масштабируйтесь по мере роста бизнеса</p>
+          </div>
+          <div className="pricing-toggle">
+            <span className="toggle-label active" data-period="month">Ежемесячно</span>
+            <div className="toggle-switch" id="pricingToggle" />
+            <span className="toggle-label" data-period="year">Ежегодно</span>
+            <span className="save-badge">-20%</span>
+          </div>
+          <div className="pricing-grid">
+            <div className="pricing-card">
+              <div className="plan-name">Старт</div>
+              <p className="plan-desc">Для тестирования и небольших проектов</p>
+              <div className="plan-price"><span className="price-amount" data-month="0" data-year="0">0</span><span className="price-currency">₽</span></div>
+              <div className="price-period">навсегда бесплатно</div>
+              <ul className="plan-features">
+                <li>До 100 диалогов в месяц</li><li>1 бот</li><li>Базовый конструктор</li>
+                <li>Шаблоны сценариев</li><li>Email-поддержка</li>
+                <li className="disabled">Интеграция с CRM</li><li className="disabled">AI-ответы</li>
+              </ul>
+              <a href="#" className="btn btn-outline">Начать бесплатно</a>
+            </div>
+            <div className="pricing-card featured">
+              <div className="popular-badge">Популярный</div>
+              <div className="plan-name">Бизнес</div>
+              <p className="plan-desc">Для растущих компаний и интернет-магазинов</p>
+              <div className="plan-price"><span className="price-amount" data-month="2990" data-year="2390">2 990</span><span className="price-currency">₽</span></div>
+              <div className="price-period">в месяц</div>
+              <ul className="plan-features">
+                <li>До 10 000 диалогов</li><li>До 5 ботов</li><li>Продвинутый конструктор</li>
+                <li>Интеграция с CRM</li><li>GPT-интеграция (1000 запросов)</li>
+                <li>Аналитика и отчёты</li><li>Приоритетная поддержка</li>
+              </ul>
+              <a href="#" className="btn btn-primary">Выбрать тариф</a>
+            </div>
+            <div className="pricing-card">
+              <div className="plan-name">Премиум</div>
+              <p className="plan-desc">Для крупных проектов и агентств</p>
+              <div className="plan-price"><span className="price-amount" data-month="9990" data-year="7990">9 990</span><span className="price-currency">₽</span></div>
+              <div className="price-period">в месяц</div>
+              <ul className="plan-features">
+                <li>Безлимитные диалоги</li><li>Безлимитные боты</li><li>White-label решение</li>
+                <li>Все CRM-интеграции</li><li>GPT без ограничений</li>
+                <li>API доступ</li><li>Персональный менеджер</li>
+              </ul>
+              <a href="#" className="btn btn-outline">Связаться с нами</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section className="testimonials">
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">Отзывы</div>
+            <h2 className="section-title">Что говорят наши клиенты</h2>
+            <p className="section-subtitle">Более 3000 компаний уже автоматизировали общение с клиентами</p>
+          </div>
+          <div className="testimonials-grid">
+            {[
+              { init: "АК", name: "Анна Ковалёва", role: "Владелец магазина одежды", text: "Запустили бота для интернет-магазина за один вечер. Конверсия в покупку выросла на 34%, а нагрузка на поддержку снизилась вдвое." },
+              { init: "ДМ", name: "Дмитрий Морозов", role: "Руководитель отдела продаж", text: "Интеграция с AmoCRM работает идеально. Все заявки автоматически попадают в воронку, менеджеры экономят по 3 часа в день на рутине." },
+              { init: "ЕС", name: "Елена Смирнова", role: "Маркетолог, digital-агентство", text: "AI-функции — это магия. Бот отвечает так, будто это живой менеджер. Клиенты даже не понимают, что общаются с роботом." },
+            ].map((t) => (
+              <div key={t.name} className="testimonial-card">
+                <div className="testimonial-stars">★★★★★</div>
+                <p className="testimonial-text">"{t.text}"</p>
+                <div className="testimonial-author">
+                  <div className="author-avatar">{t.init}</div>
+                  <div className="author-info"><strong>{t.name}</strong><span>{t.role}</span></div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="faq">
+        <div className="container">
+          <div className="section-header">
+            <div className="section-tag">FAQ</div>
+            <h2 className="section-title">Частые вопросы</h2>
+            <p className="section-subtitle">Не нашли ответ? Напишите нам — поможем разобраться</p>
+          </div>
+          <div className="faq-list">
+            {[
+              { q: "Нужны ли навыки программирования?", a: "Нет, BotFlow создан для людей без технического бэкграунда. Визуальный конструктор позволяет собирать сценарии перетаскиванием блоков. Для продвинутых пользователей есть возможность писать кастомные скрипты на JavaScript." },
+              { q: "Как подключить сообщество ВКонтакте?", a: "Процесс занимает 2 минуты. В личном кабинете нажмите «Подключить VK», авторизуйтесь и выберите сообщество. Мы автоматически настроим Callback API и все необходимые права доступа." },
+              { q: "Есть ли ограничения на бесплатном тарифе?", a: "На бесплатном тарифе доступно до 100 диалогов в месяц, 1 бот и базовые функции конструктора. Этого достаточно, чтобы протестировать платформу и запустить небольшого бота для личного проекта." },
+              { q: "Можно ли перенести данные с другой платформы?", a: "Да, мы поддерживаем импорт сценариев из SendPulse, Botpress, ManyChat и других популярных платформ. Наша команда поможет с миграцией на тарифах «Бизнес» и «Премиум»." },
+              { q: "Где хранятся данные пользователей?", a: "Все данные хранятся на серверах в России в соответствии с 152-ФЗ. Мы используем шифрование AES-256, ежедневные бэкапы и соответствуем требованиям GDPR и российскому законодательству о персональных данных." },
+              { q: "Можно ли отменить подписку в любой момент?", a: "Да, подписку можно отменить в один клик в личном кабинете. Доступ к платным функциям сохранится до конца оплаченного периода. Вы всегда можете экспортировать все данные в JSON или CSV." },
+            ].map((item) => (
+              <div key={item.q} className="faq-item">
+                <div className="faq-question">
+                  <span>{item.q}</span>
+                  <div className="faq-icon">+</div>
+                </div>
+                <div className="faq-answer">{item.a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="cta-section">
+        <div className="container">
+          <div className="cta-content">
+            <h2>Готовы автоматизировать общение с клиентами?</h2>
+            <p>Присоединяйтесь к 12 000+ компаниям, которые уже используют BotFlow для роста бизнеса</p>
+            <div className="cta-buttons">
+              <a href="#" className="btn btn-primary btn-lg">Создать бота бесплатно →</a>
+              <a href="#" className="btn btn-outline btn-lg">Записаться на демо</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer>
+        <div className="container">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <a href="#" className="logo footer-logo"><div className="logo-icon">⚡</div>BotFlow</a>
+              <p>SaaS-платформа для создания умных чат-ботов ВКонтакте. Автоматизируйте общение с клиентами без кода.</p>
+            </div>
+            {[
+              { title: "Продукт", links: ["Возможности", "Тарифы", "Интеграции", "Шаблоны", "API"] },
+              { title: "Компания", links: ["О нас", "Блог", "Карьера", "Контакты", "Партнёрам"] },
+              { title: "Поддержка", links: ["Документация", "База знаний", "Статус системы", "Обучение", "Связаться"] },
+            ].map((col) => (
+              <div key={col.title} className="footer-col">
+                <h4>{col.title}</h4>
+                <ul>{col.links.map((l) => <li key={l}><a href="#">{l}</a></li>)}</ul>
+              </div>
+            ))}
+          </div>
+          <div className="footer-bottom">
+            <div>© 2026 BotFlow. Все права защищены.</div>
+            <div className="social-links">
+              {[["VK", "VK"], ["TG", "Telegram"], ["YT", "YouTube"], ["GH", "GitHub"]].map(([label, title]) => (
+                <a key={label} href="#" className="social-link" title={title}>{label}</a>
               ))}
             </div>
           </div>
         </div>
-
-        {/* Content picker */}
-        <div className="game-card rounded-xl p-4">
-          <div className="font-unbounded text-xs text-muted-foreground mb-1 tracking-widest">ВЫБЕРИ СЛЕДУЮЩИЙ ПОСТ</div>
-          <div className="text-[10px] font-ibm mb-3" style={{ color: "hsl(var(--neon-yellow))" }}>
-            💡 Алгоритм подсказывает: «Дай то, что злит — это удерживает дольше»
-          </div>
-          <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
-            {available.map((item) => (
-              <button key={item.id} onClick={() => addToFeed(item)}
-                className={`feed-item ${item.type} text-left w-full`}>
-                <div className="font-ibm mb-1">{item.text}</div>
-                <div className="flex gap-3 text-[10px] text-muted-foreground">
-                  <span>⏱ +{item.engagement} вовлечённости</span>
-                  {item.radicalism > 0 && <span style={{ color: "hsl(var(--neon-red))" }}>🫧 +{item.radicalism} пузырь</span>}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Result
-  const isRadical = radicalismScore > 25;
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-8 animate-slide-up">
-      <div className="game-card rounded-2xl p-6 text-center">
-        <div className="text-5xl mb-4">{isRadical ? "🫧" : "🛡️"}</div>
-        <h3 className="font-unbounded text-xl mb-2" style={{ color: isRadical ? "hsl(var(--neon-red))" : "hsl(var(--neon-green))" }}>
-          {isRadical ? "ПУЗЫРЬ ФИЛЬТРОВ СОЗДАН" : "ИНФОРМАЦИОННЫЙ БАЛАНС!"}
-        </h3>
-        <p className="text-sm text-muted-foreground font-ibm mb-4 max-w-sm mx-auto">
-          {isRadical
-            ? "За 6 ходов ты превратил нейтрального пользователя в радикала. Именно так работают реальные алгоритмы — без злого умысла, только оптимизация."
-            : "Ты сохранил информационную экосистему. В реальном мире алгоритмы редко так себя ведут — им важна вовлечённость."}
-        </p>
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-xl p-4" style={{ background: "hsl(155 40% 95%)", border: "1px solid hsl(155 40% 82%)" }}>
-            <div className="font-unbounded text-2xl neon-green">{totalEngagement}</div>
-            <div className="text-xs text-muted-foreground font-ibm">очков вовлечённости</div>
-          </div>
-          <div className="rounded-xl p-4" style={{ background: "hsl(210 20% 95%)", border: "1px solid hsl(210 20% 86%)" }}>
-            <div className="font-unbounded text-2xl" style={{ color: getBubbleColor() }}>{radicalismScore}</div>
-            <div className="text-xs text-muted-foreground font-ibm">индекс радикализации</div>
-          </div>
-        </div>
-        <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "hsl(270 70% 60% / 0.08)", border: "1px solid hsl(270 70% 60% / 0.2)" }}>
-          <p className="text-xs font-ibm neon-purple">
-            💡 <strong>Инсайт:</strong> понимание механики алгоритмов — первый шаг к информационной гигиене.
-            Диверсифицируй источники, используй режим «инкогнито», периодически очищай историю.
-          </p>
-        </div>
-        <button onClick={() => { onXP(50); onComplete(); }} className="btn-primary px-10 py-3 rounded-xl">
-          ФИНАЛ МИССИИ ▶
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── FINAL SCREEN ──────────────────────────────────────────────────
-function FinalScreen({ xp, onRestart }: { xp: number; onRestart: () => void }) {
-  const rank = xp >= 200 ? "МАСТЕР КОГНИТИВНОЙ БЕЗОПАСНОСТИ" : xp >= 120 ? "ОПЫТНЫЙ АГЕНТ" : "АГЕНТ-СТАЖЁР";
-  const stars = xp >= 200 ? 3 : xp >= 120 ? 2 : 1;
-
-  return (
-    <div className="min-h-screen grid-bg flex flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="text-7xl mb-4 animate-float">🐈‍⬛</div>
-      <div className="font-unbounded text-3xl neon-green mb-1">МИССИЯ ВЫПОЛНЕНА</div>
-      <div className="font-unbounded text-xs text-muted-foreground tracking-widest mb-6">ЛУНА-НАВИГАТОР ДОВОЛЕН</div>
-
-      <div className="flex gap-2 mb-4 justify-center text-4xl">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <span key={i} className={i < stars ? "animate-pop-in" : "opacity-20"} style={{ animationDelay: `${i * 0.2}s` }}>⭐</span>
-        ))}
-      </div>
-
-      <div className="game-card rounded-2xl p-8 max-w-md w-full mb-6">
-        <div className="text-[10px] text-muted-foreground font-ibm tracking-widest mb-1">ЗВАНИЕ АГЕНТА</div>
-        <div className="font-unbounded text-base neon-yellow mb-4">{rank}</div>
-        <div className="text-4xl font-unbounded neon-green mb-1">{xp}</div>
-        <div className="text-xs text-muted-foreground font-ibm mb-5">очков опыта набрано</div>
-
-        <div className="flex flex-col gap-2 text-left">
-          {[
-            { icon: "🔍", text: "Освоены свойства информации: достоверность, объективность, полнота" },
-            { icon: "📡", text: "Понята механика искажений при передаче и обработке данных" },
-            { icon: "🤖", text: "Раскрыта архитектура рекомендательных алгоритмов" },
-          ].map((p) => (
-            <div key={p.icon} className="flex gap-3 text-xs font-ibm text-foreground/70">
-              <span className="flex-shrink-0">{p.icon}</span>
-              <span>{p.text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="luna-bubble px-5 py-3 max-w-sm mb-8 animate-slide-up">
-        <p className="text-sm font-ibm" style={{ color: "hsl(var(--luna-orange))" }}>
-          Мурр-пурр~ Ты стал настоящим агентом! Теперь иди проверяй источники, а я пойду спать на клавиатуру 😸
-        </p>
-      </div>
-
-      <button onClick={onRestart} className="btn-secondary px-10 py-3 rounded-xl">
-        ↺ НОВАЯ МИССИЯ
-      </button>
-    </div>
-  );
-}
-
-// ─── ROOT APP ──────────────────────────────────────────────────────
-type Screen = "intro" | "level1" | "level2" | "level3" | "final";
-
-const LEVEL_NAMES: Record<Screen, string> = {
-  intro: "БРИФИНГ",
-  level1: "ФИЛЬТР РЕАЛЬНОСТИ",
-  level2: "ЛОВУШКИ ПЕРЕДАЧИ",
-  level3: "ВЗЛОМ АЛГОРИТМОВ",
-  final: "МИССИЯ ВЫПОЛНЕНА",
-};
-
-export default function App() {
-  const [screen, setScreen] = useState<Screen>("intro");
-  const [xp, setXp] = useState(0);
-  const [lunaMood, setLunaMood] = useState<LunaMood>("idle");
-  const [lunaPhrase, setLunaPhrase] = useState(getLunaPhrase("idle"));
-  const [lunaKey, setLunaKey] = useState(0);
-
-  const levelNum = screen === "intro" || screen === "final" ? 0 : parseInt(screen.replace("level", ""));
-
-  const triggerLuna = (mood: LunaMood, phrase: string) => {
-    setLunaMood(mood);
-    setLunaPhrase(phrase);
-    setLunaKey((k) => k + 1);
-    setTimeout(() => { setLunaMood("idle"); setLunaPhrase(getLunaPhrase("idle")); }, 5000);
-  };
-
-  const addXP = (n: number) => setXp((prev) => prev + n);
-
-  const goNext = () => {
-    const map: Partial<Record<Screen, Screen>> = {
-      level1: "level2",
-      level2: "level3",
-      level3: "final",
-    };
-    const next = map[screen];
-    if (next) {
-      addXP(50);
-      setScreen(next);
-      triggerLuna("think", getLunaPhrase("think"));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  return (
-    <div className="min-h-screen relative" style={{ background: "linear-gradient(160deg, hsl(210 30% 97%) 0%, hsl(215 25% 93%) 100%)" }}>
-      {/* HUD */}
-      {screen !== "intro" && screen !== "final" && (
-        <HUD xp={xp} level={levelNum} levelName={LEVEL_NAMES[screen]} />
-      )}
-
-      {/* Content */}
-      <div className={screen !== "intro" && screen !== "final" ? "pt-20" : ""}>
-        {screen === "intro" && <IntroScreen onStart={() => { setScreen("level1"); triggerLuna("think", "Начинаем с самого начала — что такое информация?"); }} />}
-        {screen === "level1" && <Level1 onComplete={goNext} onXP={addXP} onLuna={triggerLuna} />}
-        {screen === "level2" && <Level2 onComplete={goNext} onXP={addXP} onLuna={triggerLuna} />}
-        {screen === "level3" && <Level3 onComplete={goNext} onXP={addXP} onLuna={triggerLuna} />}
-        {screen === "final" && <FinalScreen xp={xp} onRestart={() => { setXp(0); setScreen("intro"); }} />}
-      </div>
-
-      {/* Luna floating widget */}
-      {screen !== "final" && (
-        <div key={lunaKey} className="fixed bottom-6 left-4 z-50 animate-slide-up">
-          <Luna mood={lunaMood} phrase={lunaPhrase} />
-        </div>
-      )}
-    </div>
+      </footer>
+    </>
   );
 }
