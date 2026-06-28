@@ -3,7 +3,7 @@
     {
       "name": "Health check",
       "method": "GET",
-      "path": "/",
+      "path": "/?action=unknown",
       "expectedStatus": 404,
       "bodyMatcher": "partial"
     }

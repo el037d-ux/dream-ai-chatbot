@@ -20,16 +20,16 @@ async function req(url: string, method: string, body?: object, auth = false) {
 
 export const api = {
   register: (email: string, password: string, name: string) =>
-    req(`${AUTH_URL}/register`, "POST", { email, password, name }),
+    req(`${AUTH_URL}?action=register`, "POST", { email, password, name }),
   login: (email: string, password: string) =>
-    req(`${AUTH_URL}/login`, "POST", { email, password }),
-  me: () => req(`${AUTH_URL}/me`, "GET", undefined, true),
-  logout: () => req(`${AUTH_URL}/logout`, "POST", undefined, true),
+    req(`${AUTH_URL}?action=login`, "POST", { email, password }),
+  me: () => req(`${AUTH_URL}?action=me`, "GET", undefined, true),
+  logout: () => req(`${AUTH_URL}?action=logout`, "POST", undefined, true),
 
-  getBots: () => req(`${BOTS_URL}/bots`, "GET", undefined, true),
+  getBots: () => req(`${BOTS_URL}?action=list`, "GET", undefined, true),
   createBot: (name: string, description: string) =>
-    req(`${BOTS_URL}/bots`, "POST", { name, description }, true),
-  getBot: (id: number) => req(`${BOTS_URL}/bots/${id}`, "GET", undefined, true),
+    req(`${BOTS_URL}?action=create`, "POST", { name, description }, true),
+  getBot: (id: number) => req(`${BOTS_URL}?action=get&id=${id}`, "GET", undefined, true),
   saveBot: (id: number, nodes: object[], edges: object[]) =>
-    req(`${BOTS_URL}/bots/${id}/save`, "POST", { nodes, edges }, true),
+    req(`${BOTS_URL}?action=save&id=${id}`, "POST", { nodes, edges }, true),
 };
