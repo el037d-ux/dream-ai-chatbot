@@ -67,6 +67,8 @@ export default function Dashboard({ user, onLogout, onOpenBot }: Props) {
           <div style={s.navItem}>📊 Аналитика</div>
           <div style={s.navItem}>🔗 Интеграции</div>
           <div style={s.navItem}>⚙️ Настройки</div>
+          <div style={s.navDivider} />
+          <div style={s.navItem} onClick={() => window.location.href = "/"}>🏠 На главную</div>
         </nav>
         <div style={s.sidebarBottom}>
           <div style={s.userInfo}>
@@ -179,6 +181,7 @@ const s: Record<string, React.CSSProperties> = {
   nav: { display: "flex", flexDirection: "column", gap: "4px", flex: 1 },
   navItem: { padding: "10px 12px", borderRadius: "10px", color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", cursor: "pointer", transition: "all 0.2s" },
   navActive: { background: "rgba(255,255,255,0.1)", color: "#fff" },
+  navDivider: { height: "1px", background: "rgba(255,255,255,0.08)", margin: "8px 0" },
   sidebarBottom: { borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "12px" },
   userInfo: { display: "flex", alignItems: "center", gap: "10px" },
   avatar: { width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg,#0077FF,#7B61FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 },
