@@ -1,0 +1,46 @@
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  token VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days')
+);
+
+CREATE TABLE IF NOT EXISTS bots (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  description TEXT DEFAULT '',
+  status VARCHAR(50) DEFAULT 'inactive',
+  dialogs_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bot_nodes (
+  id SERIAL PRIMARY KEY,
+  bot_id INTEGER REFERENCES bots(id),
+  node_id VARCHAR(100) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  label VARCHAR(255) NOT NULL,
+  message TEXT DEFAULT '',
+  pos_x FLOAT DEFAULT 100,
+  pos_y FLOAT DEFAULT 100
+);
+
+CREATE TABLE IF NOT EXISTS bot_edges (
+  id SERIAL PRIMARY KEY,
+  bot_id INTEGER REFERENCES bots(id),
+  edge_id VARCHAR(100) NOT NULL,
+  source_node_id VARCHAR(100) NOT NULL,
+  target_node_id VARCHAR(100) NOT NULL
+);
