@@ -11,14 +11,22 @@ interface Node {
   y: number;
 }
 interface Edge { id: string; source: string; target: string; }
-interface BotInfo { id: number; name: string; description: string; status: string; }
+interface Prompt {
+  persona: string; goal: string; context: string;
+  instructions: string; constraints: string; examples: string;
+}
+interface BotInfo {
+  id: number; name: string; description: string; status: string;
+  prompt_persona: string; prompt_goal: string; prompt_context: string;
+  prompt_instructions: string; prompt_constraints: string; prompt_examples: string;
+}
 
 const NODE_TYPES = [
-  { type: "trigger", label: "Триггер", icon: "💬", color: "#00D4AA", bg: "rgba(0,212,170,0.1)" },
-  { type: "message", label: "Сообщение", icon: "📤", color: "#0077FF", bg: "rgba(0,119,255,0.1)" },
-  { type: "condition", label: "Условие", icon: "🔀", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
-  { type: "action", label: "Действие", icon: "⚡", color: "#7B61FF", bg: "rgba(123,97,255,0.1)" },
-  { type: "ai", label: "AI-ответ", icon: "🤖", color: "#FF6B6B", bg: "rgba(255,107,107,0.1)" },
+  { type: "trigger",   label: "Триггер",    icon: "💬", color: "#00D4AA", bg: "rgba(0,212,170,0.1)" },
+  { type: "message",   label: "Сообщение",  icon: "📤", color: "#0077FF", bg: "rgba(0,119,255,0.1)" },
+  { type: "condition", label: "Условие",    icon: "🔀", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
+  { type: "action",    label: "Действие",   icon: "⚡", color: "#7B61FF", bg: "rgba(123,97,255,0.1)" },
+  { type: "ai",        label: "AI-ответ",   icon: "🤖", color: "#FF6B6B", bg: "rgba(255,107,107,0.1)" },
 ] as const;
 
 function getNodeStyle(type: Node["type"]) {
@@ -29,10 +37,8 @@ let idCounter = Date.now();
 const uid = () => `node_${++idCounter}`;
 const eid = () => `edge_${++idCounter}`;
 
-// ─── Node Component ───────────────────────────────────────────────
-function NodeCard({
-  node, selected, onSelect, onMove, onEdit,
-}: {
+// ─── Node Card ─────────────────────────────────────────────────────
+function NodeCard({ node, selected, onSelect, onMove, onEdit }: {
   node: Node; selected: boolean;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
@@ -47,11 +53,11 @@ function NodeCard({
     onSelect(node.id);
     dragging.current = true;
     offset.current = { x: e.clientX - node.x, y: e.clientY - node.y };
-    const onMove_ = (ev: MouseEvent) => {
+    const onMv = (ev: MouseEvent) => {
       if (dragging.current) onMove(node.id, ev.clientX - offset.current.x, ev.clientY - offset.current.y);
     };
-    const onUp = () => { dragging.current = false; window.removeEventListener("mousemove", onMove_); window.removeEventListener("mouseup", onUp); };
-    window.addEventListener("mousemove", onMove_);
+    const onUp = () => { dragging.current = false; window.removeEventListener("mousemove", onMv); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMv);
     window.addEventListener("mouseup", onUp);
   };
 
@@ -61,123 +67,207 @@ function NodeCard({
         position: "absolute", left: node.x, top: node.y,
         background: "#fff",
         border: `2px solid ${selected ? nStyle.color : "#E0E4F0"}`,
-        borderRadius: "14px", padding: "14px 16px", minWidth: "160px",
+        borderRadius: "14px", padding: "14px 16px", minWidth: "170px",
         boxShadow: selected ? `0 0 0 4px ${nStyle.color}22, 0 8px 24px rgba(0,0,0,0.1)` : "0 4px 12px rgba(0,0,0,0.08)",
         cursor: "grab", userSelect: "none", zIndex: selected ? 10 : 5,
         transition: "border-color 0.15s, box-shadow 0.15s",
+        fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
       }}
       onMouseDown={onMouseDown}
       onDoubleClick={(e) => { e.stopPropagation(); onEdit(node); }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-        <div style={{ width: "28px", height: "28px", borderRadius: "7px", background: nStyle.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: node.message ? "8px" : 0 }}>
+        <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: nStyle.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
           {nStyle.icon}
         </div>
         <div>
-          <div style={{ fontSize: "0.7rem", fontWeight: 700, color: nStyle.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{nStyle.label}</div>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0A0E27" }}>{node.label}</div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: nStyle.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{nStyle.label}</div>
+          <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0A0E27" }}>{node.label}</div>
         </div>
       </div>
       {node.message && (
-        <div style={{ fontSize: "0.78rem", color: "#8B92B8", background: "#F8F9FF", borderRadius: "8px", padding: "6px 8px", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: "0.78rem", color: "#8B92B8", background: "#F8F9FF", borderRadius: "8px", padding: "6px 10px", maxWidth: "210px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {node.message}
         </div>
       )}
-      {/* Connection points */}
       <div style={{ position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50%)", width: "12px", height: "12px", borderRadius: "50%", background: nStyle.color, border: "2px solid #fff", cursor: "crosshair" }} />
       <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", width: "12px", height: "12px", borderRadius: "50%", background: "#E0E4F0", border: "2px solid #fff" }} />
     </div>
   );
 }
 
-// ─── SVG Edges ────────────────────────────────────────────────────
+// ─── Edges SVG ─────────────────────────────────────────────────────
 function EdgesSVG({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) {
-  const nodesById = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const map = Object.fromEntries(nodes.map((n) => [n.id, n]));
   return (
     <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
       <defs>
-        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="#0077FF" />
         </marker>
       </defs>
       {edges.map((e) => {
-        const s = nodesById[e.source];
-        const t = nodesById[e.target];
+        const s = map[e.source], t = map[e.target];
         if (!s || !t) return null;
-        const sx = s.x + 80, sy = s.y + 80;
-        const tx = t.x + 80, ty = t.y + 6;
-        const cy = (sy + ty) / 2;
-        return (
-          <path key={e.id}
-            d={`M ${sx} ${sy} C ${sx} ${cy}, ${tx} ${cy}, ${tx} ${ty}`}
-            stroke="#0077FF" strokeWidth="2" fill="none" strokeDasharray="6 3"
-            markerEnd="url(#arrowhead)"
-          />
-        );
+        const sx = s.x + 85, sy = s.y + 82, tx = t.x + 85, ty = t.y + 6, cy = (sy + ty) / 2;
+        return <path key={e.id} d={`M${sx} ${sy} C${sx} ${cy},${tx} ${cy},${tx} ${ty}`} stroke="#0077FF" strokeWidth="2" fill="none" strokeDasharray="6 3" markerEnd="url(#arr)" />;
       })}
     </svg>
   );
 }
 
-// ─── Edit Panel ───────────────────────────────────────────────────
-function EditPanel({ node, onSave, onClose, onDelete }: {
+// ─── Node Edit Panel ───────────────────────────────────────────────
+function NodePanel({ node, onSave, onClose, onDelete }: {
   node: Node; onSave: (n: Node) => void; onClose: () => void; onDelete: (id: string) => void;
 }) {
   const [label, setLabel] = useState(node.label);
   const [message, setMessage] = useState(node.message);
   const [type, setType] = useState(node.type);
 
+  useEffect(() => { setLabel(node.label); setMessage(node.message); setType(node.type); }, [node.id]);
+
+  const nStyle = getNodeStyle(type);
+
   return (
-    <div style={ep.panel}>
-      <div style={ep.header}>
-        <span style={ep.title}>Редактировать узел</span>
-        <button style={ep.close} onClick={onClose}>✕</button>
+    <div style={p.panel}>
+      <div style={{ ...p.panelHeader, borderBottom: `3px solid ${nStyle.color}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: "28px", height: "28px", background: nStyle.bg, borderRadius: "7px", display: "flex", alignItems: "center", justifyContent: "center" }}>{nStyle.icon}</div>
+          <span style={p.panelTitle}>Узел сценария</span>
+        </div>
+        <button style={p.closeBtn} onClick={onClose}>✕</button>
       </div>
-      <div style={ep.body}>
-        <div style={ep.field}>
-          <label style={ep.label}>Тип узла</label>
-          <select style={ep.select} value={type} onChange={(e) => setType(e.target.value as Node["type"])}>
+      <div style={p.panelBody}>
+        <Field label="Тип узла">
+          <select style={p.select} value={type} onChange={(e) => setType(e.target.value as Node["type"])}>
             {NODE_TYPES.map((t) => <option key={t.type} value={t.type}>{t.icon} {t.label}</option>)}
           </select>
-        </div>
-        <div style={ep.field}>
-          <label style={ep.label}>Название</label>
-          <input style={ep.input} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Название узла" />
-        </div>
-        <div style={ep.field}>
-          <label style={ep.label}>Текст сообщения</label>
-          <textarea style={ep.textarea} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Введите текст ответа бота..." rows={4} />
-        </div>
-        <div style={ep.actions}>
-          <button style={ep.deleteBtn} onClick={() => onDelete(node.id)}>🗑 Удалить</button>
-          <button style={ep.saveBtn} onClick={() => onSave({ ...node, label, message, type })}>Сохранить</button>
+        </Field>
+        <Field label="Название">
+          <input style={p.input} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Название узла" />
+        </Field>
+        <Field label="Текст сообщения">
+          <textarea style={p.textarea} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Введите текст ответа бота..." rows={5} />
+        </Field>
+        <div style={p.actions}>
+          <button style={p.deleteBtn} onClick={() => onDelete(node.id)}>🗑 Удалить</button>
+          <button style={p.saveBtn} onClick={() => onSave({ ...node, label, message, type })}>Применить</button>
         </div>
       </div>
     </div>
   );
 }
 
-const ep: Record<string, React.CSSProperties> = {
-  panel: { width: "280px", background: "#fff", borderLeft: "1px solid #E0E4F0", display: "flex", flexDirection: "column", flexShrink: 0 },
-  header: { padding: "16px 20px", borderBottom: "1px solid #E0E4F0", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  title: { fontWeight: 700, color: "#0A0E27", fontSize: "0.95rem" },
-  close: { background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "1rem" },
-  body: { padding: "20px", display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto" },
-  field: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { fontSize: "0.8rem", fontWeight: 600, color: "#4A5280" },
-  input: { padding: "10px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.9rem", outline: "none", color: "#0A0E27" },
-  select: { padding: "10px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.9rem", outline: "none", color: "#0A0E27", background: "#fff" },
-  textarea: { padding: "10px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.9rem", outline: "none", resize: "vertical", color: "#0A0E27", fontFamily: "inherit" },
-  actions: { display: "flex", gap: "8px" },
-  deleteBtn: { flex: 1, background: "#fff0f0", border: "1px solid #ffd0d0", color: "#d63031", borderRadius: "10px", padding: "10px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" },
-  saveBtn: { flex: 2, background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "10px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" },
+// ─── AI Prompt Panel ───────────────────────────────────────────────
+const PROMPT_FIELDS: { key: keyof Prompt; label: string; icon: string; placeholder: string; hint: string }[] = [
+  { key: "persona",      icon: "🎭", label: "Роль (Persona)",           placeholder: "Ты — дружелюбный помощник интернет-магазина...",     hint: "Кто этот бот? Тон, стиль, уровень экспертизы." },
+  { key: "goal",         icon: "🎯", label: "Цель (Goal)",              placeholder: "Главная задача — помочь клиенту выбрать товар...",    hint: "Какую главную задачу решает бот?" },
+  { key: "context",      icon: "🌍", label: "Контекст (Context)",       placeholder: "Работаю в магазине электроники. Клиенты — люди 25-45 лет...", hint: "Для кого работает? Какая предыстория?" },
+  { key: "instructions", icon: "📋", label: "Инструкции (Instructions)", placeholder: "1. Всегда здоровайся по имени\n2. Предлагай максимум 3 варианта...", hint: "Пошаговые правила: что делать, чего не делать." },
+  { key: "constraints",  icon: "🚫", label: "Ограничения (Constraints)", placeholder: "Отвечай только на русском. Длина ответа — до 3 предложений...", hint: "Формат, длина ответов, запрещённые темы, язык." },
+  { key: "examples",     icon: "💡", label: "Примеры (Few-Shot)",        placeholder: "Q: Какой телефон лучше?\nA: Зависит от бюджета...",   hint: "Примеры идеальных вопросов и ответов." },
+];
+
+function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Prompt) => void }) {
+  const [open, setOpen] = useState<keyof Prompt | null>("persona");
+
+  return (
+    <div style={p.panel}>
+      <div style={{ ...p.panelHeader, borderBottom: "3px solid #FF6B6B" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: "28px", height: "28px", background: "rgba(255,107,107,0.12)", borderRadius: "7px", display: "flex", alignItems: "center", justifyContent: "center" }}>🤖</div>
+          <span style={p.panelTitle}>Настройка AI-промпта</span>
+        </div>
+      </div>
+      <div style={{ ...p.panelBody, gap: "8px" }}>
+        <div style={{ fontSize: "0.78rem", color: "#8B92B8", background: "#F8F9FF", borderRadius: "10px", padding: "10px 12px", lineHeight: 1.5 }}>
+          Заполните разделы ниже — они формируют системный промпт для вашего AI-бота. Чем подробнее, тем точнее ответы.
+        </div>
+        {PROMPT_FIELDS.map((f) => {
+          const isOpen = open === f.key;
+          const filled = !!(prompt[f.key] || "").trim();
+          return (
+            <div key={f.key} style={{ border: `1.5px solid ${isOpen ? "#FF6B6B" : filled ? "#00D4AA44" : "#E0E4F0"}`, borderRadius: "12px", overflow: "hidden", transition: "border-color 0.2s" }}>
+              <button
+                style={{ width: "100%", background: isOpen ? "rgba(255,107,107,0.05)" : filled ? "rgba(0,212,170,0.04)" : "#fff", border: "none", padding: "11px 14px", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", textAlign: "left" }}
+                onClick={() => setOpen(isOpen ? null : f.key)}
+              >
+                <span style={{ fontSize: "1rem" }}>{f.icon}</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#0A0E27", flex: 1 }}>{f.label}</span>
+                {filled && <span style={{ fontSize: "0.68rem", background: "rgba(0,212,170,0.15)", color: "#00A884", borderRadius: "100px", padding: "2px 7px", fontWeight: 700 }}>✓</span>}
+                <span style={{ color: "#8B92B8", fontSize: "0.7rem", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+              </button>
+              {isOpen && (
+                <div style={{ padding: "0 12px 12px" }}>
+                  <div style={{ fontSize: "0.75rem", color: "#8B92B8", marginBottom: "8px" }}>{f.hint}</div>
+                  <textarea
+                    style={{ ...p.textarea, minHeight: "100px", fontSize: "0.82rem" }}
+                    value={prompt[f.key]}
+                    onChange={(e) => onChange({ ...prompt, [f.key]: e.target.value })}
+                    placeholder={f.placeholder}
+                    rows={4}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Preview */}
+        {Object.values(prompt).some((v) => v.trim()) && (
+          <div style={{ marginTop: "4px", border: "1.5px solid #E0E4F0", borderRadius: "12px", overflow: "hidden" }}>
+            <div style={{ padding: "10px 14px", background: "#F8F9FF", fontSize: "0.78rem", fontWeight: 700, color: "#4A5280", display: "flex", alignItems: "center", gap: "6px" }}>
+              👁 Превью системного промпта
+            </div>
+            <div style={{ padding: "12px 14px", fontSize: "0.78rem", color: "#4A5280", lineHeight: 1.6, fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "180px", overflowY: "auto", background: "#fff" }}>
+              {buildPromptPreview(prompt)}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function buildPromptPreview(pr: Prompt): string {
+  const parts: string[] = [];
+  if (pr.persona)      parts.push(`## Роль\n${pr.persona}`);
+  if (pr.goal)         parts.push(`## Цель\n${pr.goal}`);
+  if (pr.context)      parts.push(`## Контекст\n${pr.context}`);
+  if (pr.instructions) parts.push(`## Инструкции\n${pr.instructions}`);
+  if (pr.constraints)  parts.push(`## Ограничения\n${pr.constraints}`);
+  if (pr.examples)     parts.push(`## Примеры\n${pr.examples}`);
+  return parts.join("\n\n");
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+      <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#4A5280" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const p: Record<string, React.CSSProperties> = {
+  panel: { width: "300px", background: "#fff", borderLeft: "1px solid #E0E4F0", display: "flex", flexDirection: "column", flexShrink: 0, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" },
+  panelHeader: { padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  panelTitle: { fontWeight: 700, color: "#0A0E27", fontSize: "0.92rem" },
+  closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "1rem" },
+  panelBody: { padding: "14px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto", flex: 1 },
+  select: { padding: "9px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", background: "#fff", width: "100%" },
+  input: { padding: "9px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", width: "100%", boxSizing: "border-box" },
+  textarea: { padding: "9px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", resize: "vertical", color: "#0A0E27", fontFamily: "inherit", width: "100%", boxSizing: "border-box" },
+  actions: { display: "flex", gap: "8px", marginTop: "4px" },
+  deleteBtn: { flex: 1, background: "#fff0f0", border: "1px solid #ffd0d0", color: "#d63031", borderRadius: "10px", padding: "9px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" },
+  saveBtn: { flex: 2, background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "9px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" },
 };
 
-// ─── Main BotBuilder ──────────────────────────────────────────────
-interface Props {
-  botId: number;
-  onBack: () => void;
-}
+// ─── Main BotBuilder ───────────────────────────────────────────────
+type RightPanel = "node" | "prompt" | null;
+
+interface Props { botId: number; onBack: () => void; }
 
 export default function BotBuilder({ botId, onBack }: Props) {
   const [bot, setBot] = useState<BotInfo | null>(null);
@@ -185,6 +275,8 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [editNode, setEditNode] = useState<Node | null>(null);
+  const [rightPanel, setRightPanel] = useState<RightPanel>(null);
+  const [prompt, setPrompt] = useState<Prompt>({ persona: "", goal: "", context: "", instructions: "", constraints: "", examples: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -195,26 +287,42 @@ export default function BotBuilder({ botId, onBack }: Props) {
       setBot(d.bot);
       setNodes(d.nodes.map((n: Node) => ({ ...n, x: n.x ?? 100, y: n.y ?? 100 })));
       setEdges(d.edges);
+      setPrompt({
+        persona: d.bot.prompt_persona || "",
+        goal: d.bot.prompt_goal || "",
+        context: d.bot.prompt_context || "",
+        instructions: d.bot.prompt_instructions || "",
+        constraints: d.bot.prompt_constraints || "",
+        examples: d.bot.prompt_examples || "",
+      });
     });
   }, [botId]);
 
   const addNode = useCallback((type: Node["type"]) => {
     const nStyle = getNodeStyle(type);
-    const newNode: Node = {
-      id: uid(), type,
-      label: nStyle.label,
-      message: type === "message" ? "Введите текст ответа..." : type === "trigger" ? "Любое сообщение" : "",
-      x: 160 + Math.random() * 200,
-      y: 80 + nodes.length * 100,
-    };
-    setNodes((prev) => [...prev, newNode]);
-    setSelected(newNode.id);
-    setEditNode(newNode);
+    const n: Node = { id: uid(), type, label: nStyle.label, message: type === "message" ? "Введите текст..." : type === "trigger" ? "Любое сообщение" : "", x: 160 + Math.random() * 180, y: 80 + nodes.length * 110 };
+    setNodes((prev) => [...prev, n]);
+    setSelected(n.id);
+    setEditNode(n);
+    setRightPanel("node");
   }, [nodes.length]);
 
   const moveNode = useCallback((id: string, x: number, y: number) => {
     setNodes((prev) => prev.map((n) => n.id === id ? { ...n, x: Math.max(0, x), y: Math.max(0, y) } : n));
   }, []);
+
+  const handleNodeSelect = (id: string) => {
+    if (connecting && connecting !== id) {
+      if (!edges.some((e) => e.source === connecting && e.target === id)) {
+        setEdges((prev) => [...prev, { id: eid(), source: connecting, target: id }]);
+      }
+      setConnecting(null);
+      return;
+    }
+    setSelected(id);
+    const n = nodes.find((n) => n.id === id);
+    if (n) { setEditNode(n); setRightPanel("node"); }
+  };
 
   const saveNode = (updated: Node) => {
     setNodes((prev) => prev.map((n) => n.id === updated.id ? updated : n));
@@ -224,35 +332,13 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const deleteNode = (id: string) => {
     setNodes((prev) => prev.filter((n) => n.id !== id));
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
-    setEditNode(null);
-    setSelected(null);
-  };
-
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    if (e.target === canvasRef.current) {
-      setSelected(null);
-      if (connecting) setConnecting(null);
-    }
-  };
-
-  const handleNodeSelect = (id: string) => {
-    if (connecting && connecting !== id) {
-      const alreadyExists = edges.some((e) => e.source === connecting && e.target === id);
-      if (!alreadyExists) {
-        setEdges((prev) => [...prev, { id: eid(), source: connecting, target: id }]);
-      }
-      setConnecting(null);
-    } else {
-      setSelected(id);
-      const n = nodes.find((n) => n.id === id);
-      if (n) setEditNode(n);
-    }
+    setEditNode(null); setSelected(null); setRightPanel(null);
   };
 
   const saveToServer = async () => {
     setSaving(true);
     try {
-      await api.saveBot(botId, nodes, edges);
+      await api.saveBot(botId, nodes, edges, prompt);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -260,82 +346,98 @@ export default function BotBuilder({ botId, onBack }: Props) {
     }
   };
 
-  const selectedNode = editNode && nodes.find((n) => n.id === editNode.id) ? editNode : null;
+  const promptFilled = Object.values(prompt).filter((v) => v.trim()).length;
+  const currentNode = editNode && nodes.find((n) => n.id === editNode.id) ? editNode : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#F4F6FF" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#F4F6FF" }}>
       {/* Top bar */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #E0E4F0", padding: "0 20px", height: "56px", display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
-        <button style={{ background: "none", border: "none", cursor: "pointer", color: "#4A5280", fontSize: "0.9rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }} onClick={onBack}>
-          ← Назад
-        </button>
+      <div style={{ background: "#fff", borderBottom: "1px solid #E0E4F0", padding: "0 16px", height: "54px", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+        <button style={{ background: "none", border: "none", cursor: "pointer", color: "#4A5280", fontSize: "0.88rem", fontWeight: 600, padding: "6px 10px", borderRadius: "8px" }} onClick={onBack}>← Назад</button>
         <div style={{ width: "1px", height: "24px", background: "#E0E4F0" }} />
-        <div style={{ fontWeight: 800, color: "#0A0E27", fontSize: "1rem" }}>{bot?.name ?? "Загрузка..."}</div>
+        <div style={{ fontWeight: 800, color: "#0A0E27", fontSize: "0.95rem" }}>{bot?.name ?? "..."}</div>
         <div style={{ flex: 1 }} />
 
         {/* Node palette */}
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "6px" }}>
           {NODE_TYPES.map((t) => (
-            <button key={t.type} onClick={() => addNode(t.type as Node["type"])}
-              title={`Добавить: ${t.label}`}
-              style={{ background: t.bg, border: `1px solid ${t.color}44`, borderRadius: "8px", padding: "6px 10px", fontSize: "0.78rem", fontWeight: 600, color: t.color, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+            <button key={t.type} onClick={() => addNode(t.type as Node["type"])} title={`Добавить: ${t.label}`}
+              style={{ background: t.bg, border: `1px solid ${t.color}44`, borderRadius: "8px", padding: "5px 10px", fontSize: "0.75rem", fontWeight: 600, color: t.color, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
               {t.icon} {t.label}
             </button>
           ))}
         </div>
+
         <div style={{ width: "1px", height: "24px", background: "#E0E4F0" }} />
 
-        {/* Connect mode */}
-        <button onClick={() => setConnecting(connecting ? null : (selected || null))}
-          style={{ background: connecting ? "#0077FF" : "#F4F6FF", border: "1px solid #E0E4F0", borderRadius: "8px", padding: "8px 14px", fontSize: "0.82rem", fontWeight: 600, color: connecting ? "#fff" : "#4A5280", cursor: "pointer" }}>
-          {connecting ? "✕ Отмена связи" : "🔗 Связать узлы"}
+        {/* AI Prompt button */}
+        <button
+          onClick={() => setRightPanel(rightPanel === "prompt" ? null : "prompt")}
+          style={{ background: rightPanel === "prompt" ? "rgba(255,107,107,0.12)" : "#F4F6FF", border: `1.5px solid ${rightPanel === "prompt" ? "#FF6B6B" : "#E0E4F0"}`, borderRadius: "9px", padding: "7px 13px", fontSize: "0.82rem", fontWeight: 700, color: rightPanel === "prompt" ? "#FF6B6B" : "#4A5280", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+          🤖 AI-промпт
+          {promptFilled > 0 && <span style={{ background: "#FF6B6B", color: "#fff", borderRadius: "100px", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800 }}>{promptFilled}</span>}
         </button>
 
+        {/* Connect */}
+        <button
+          onClick={() => setConnecting(connecting ? null : (selected ?? null))}
+          style={{ background: connecting ? "#0077FF" : "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "9px", padding: "7px 13px", fontSize: "0.82rem", fontWeight: 600, color: connecting ? "#fff" : "#4A5280", cursor: "pointer" }}>
+          {connecting ? "✕ Отмена" : "🔗 Связать"}
+        </button>
+
+        {/* Save */}
         <button onClick={saveToServer} disabled={saving}
           style={{ background: saved ? "#00D4AA" : "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "8px 18px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
           {saving ? "Сохраняю..." : saved ? "✓ Сохранено!" : "💾 Сохранить"}
         </button>
       </div>
 
-      {/* Canvas + panel */}
+      {/* Canvas + right panel */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Canvas */}
-        <div ref={canvasRef} onClick={handleCanvasClick}
+        <div ref={canvasRef}
+          onClick={(e) => { if (e.target === canvasRef.current) { setSelected(null); setConnecting(null); } }}
           style={{
-            flex: 1, position: "relative", overflow: "auto", cursor: connecting ? "crosshair" : "default",
+            flex: 1, position: "relative", overflow: "auto",
+            cursor: connecting ? "crosshair" : "default",
             backgroundImage: "linear-gradient(rgba(0,119,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,119,255,0.05) 1px,transparent 1px)",
             backgroundSize: "28px 28px",
           }}>
-          <div style={{ position: "relative", minWidth: "1400px", minHeight: "900px" }}>
+          <div style={{ position: "relative", minWidth: "1600px", minHeight: "1000px" }}>
             <EdgesSVG nodes={nodes} edges={edges} />
             {nodes.map((node) => (
               <NodeCard key={node.id} node={node} selected={selected === node.id || connecting === node.id}
                 onSelect={handleNodeSelect} onMove={moveNode}
-                onEdit={(n) => { setEditNode(n); setSelected(n.id); }} />
+                onEdit={(n) => { setEditNode(n); setSelected(n.id); setRightPanel("node"); }} />
             ))}
-            {connecting && (
-              <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", background: "#0077FF", color: "#fff", padding: "10px 20px", borderRadius: "100px", fontSize: "0.85rem", fontWeight: 600, zIndex: 100 }}>
-                Выберите узел для подключения...
-              </div>
-            )}
             {nodes.length === 0 && (
-              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-                <div style={{ fontSize: "3rem", marginBottom: "12px" }}>🎯</div>
-                <div style={{ fontWeight: 700, color: "#4A5280", marginBottom: "6px" }}>Холст пуст</div>
+              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center", pointerEvents: "none" }}>
+                <div style={{ fontSize: "3rem", marginBottom: "10px" }}>🎯</div>
+                <div style={{ fontWeight: 700, color: "#4A5280", marginBottom: "5px" }}>Холст пуст</div>
                 <div style={{ color: "#8B92B8", fontSize: "0.85rem" }}>Добавьте узел из панели выше</div>
               </div>
             )}
           </div>
+          {connecting && (
+            <div style={{ position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)", background: "#0077FF", color: "#fff", padding: "10px 22px", borderRadius: "100px", fontSize: "0.85rem", fontWeight: 600, zIndex: 100, boxShadow: "0 8px 20px rgba(0,119,255,0.4)" }}>
+              Кликните на узел-получатель...
+            </div>
+          )}
         </div>
 
-        {/* Edit panel */}
-        {selectedNode && (
-          <EditPanel
-            node={selectedNode}
+        {/* Right panel: node editor */}
+        {rightPanel === "node" && currentNode && (
+          <NodePanel
+            node={currentNode}
             onSave={saveNode}
-            onClose={() => { setEditNode(null); setSelected(null); }}
+            onClose={() => { setRightPanel(null); setEditNode(null); setSelected(null); }}
             onDelete={deleteNode}
           />
+        )}
+
+        {/* Right panel: AI prompt */}
+        {rightPanel === "prompt" && (
+          <AIPromptPanel prompt={prompt} onChange={setPrompt} />
         )}
       </div>
     </div>

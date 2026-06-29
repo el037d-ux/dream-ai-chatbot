@@ -30,6 +30,6 @@ export const api = {
   createBot: (name: string, description: string) =>
     req(`${BOTS_URL}?action=create`, "POST", { name, description }, true),
   getBot: (id: number) => req(`${BOTS_URL}?action=get&id=${id}`, "GET", undefined, true),
-  saveBot: (id: number, nodes: object[], edges: object[]) =>
-    req(`${BOTS_URL}?action=save&id=${id}`, "POST", { nodes, edges }, true),
+  saveBot: (id: number, nodes: object[], edges: object[], prompt: object) =>
+    req(`${BOTS_URL}?action=save&id=${id}`, "POST", { nodes, edges, prompt }, true),
 };

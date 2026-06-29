@@ -81,7 +81,9 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return err("Укажите id бота")
         bot_id = int(bot_id_str)
-        cur.execute("SELECT id, name, description, status, dialogs_count, created_at FROM bots WHERE id=%s AND user_id=%s", (bot_id, user_id))
+        cur.execute("""SELECT id, name, description, status, dialogs_count, created_at,
+            prompt_persona, prompt_goal, prompt_context, prompt_instructions, prompt_constraints, prompt_examples
+            FROM bots WHERE id=%s AND user_id=%s""", (bot_id, user_id))
         r = cur.fetchone()
         if not r:
             conn.close()
@@ -91,7 +93,11 @@ def handler(event: dict, context) -> dict:
         cur.execute("SELECT edge_id, source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s", (bot_id,))
         edges = [{"id": e[0], "source": e[1], "target": e[2]} for e in cur.fetchall()]
         conn.close()
-        return ok({"bot": {"id": r[0], "name": r[1], "description": r[2], "status": r[3], "dialogs_count": r[4], "created_at": str(r[5])}, "nodes": nodes, "edges": edges})
+        return ok({"bot": {
+            "id": r[0], "name": r[1], "description": r[2], "status": r[3], "dialogs_count": r[4], "created_at": str(r[5]),
+            "prompt_persona": r[6] or "", "prompt_goal": r[7] or "", "prompt_context": r[8] or "",
+            "prompt_instructions": r[9] or "", "prompt_constraints": r[10] or "", "prompt_examples": r[11] or ""
+        }, "nodes": nodes, "edges": edges})
 
     if action == "save":
         if not bot_id_str.isdigit():
@@ -105,6 +111,7 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get("body") or "{}")
         nodes = body.get("nodes", [])
         edges = body.get("edges", [])
+        prompt = body.get("prompt", {})
         cur.execute("DELETE FROM bot_edges WHERE bot_id=%s", (bot_id,))
         cur.execute("DELETE FROM bot_nodes WHERE bot_id=%s", (bot_id,))
         for n in nodes:
@@ -117,7 +124,14 @@ def handler(event: dict, context) -> dict:
                 INSERT INTO bot_edges (bot_id, edge_id, source_node_id, target_node_id)
                 VALUES (%s,%s,%s,%s)
             """, (bot_id, e["id"], e["source"], e["target"]))
-        cur.execute("UPDATE bots SET updated_at=NOW() WHERE id=%s", (bot_id,))
+        cur.execute("""UPDATE bots SET updated_at=NOW(),
+            prompt_persona=%s, prompt_goal=%s, prompt_context=%s,
+            prompt_instructions=%s, prompt_constraints=%s, prompt_examples=%s
+            WHERE id=%s""", (
+            prompt.get("persona",""), prompt.get("goal",""), prompt.get("context",""),
+            prompt.get("instructions",""), prompt.get("constraints",""), prompt.get("examples",""),
+            bot_id
+        ))
         conn.commit()
         conn.close()
         return ok({"ok": True})

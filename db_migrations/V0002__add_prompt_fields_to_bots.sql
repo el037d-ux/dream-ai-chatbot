@@ -1,0 +1,7 @@
+ALTER TABLE bots
+  ADD COLUMN IF NOT EXISTS prompt_persona TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS prompt_goal TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS prompt_context TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS prompt_instructions TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS prompt_constraints TEXT DEFAULT '',
+  ADD COLUMN IF NOT EXISTS prompt_examples TEXT DEFAULT '';
