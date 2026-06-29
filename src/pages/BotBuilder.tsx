@@ -38,25 +38,35 @@ const uid = () => `node_${++idCounter}`;
 const eid = () => `edge_${++idCounter}`;
 
 // ─── Node Card ─────────────────────────────────────────────────────
-function NodeCard({ node, selected, onSelect, onMove, onEdit }: {
-  node: Node; selected: boolean;
+function NodeCard({ node, selected, connecting, onSelect, onMove, onEdit, onStartConnect }: {
+  node: Node; selected: boolean; connecting: boolean;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
   onEdit: (node: Node) => void;
+  onStartConnect: (id: string) => void;
 }) {
   const nStyle = getNodeStyle(node.type);
   const dragging = useRef(false);
+  const moved = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect(node.id);
+    moved.current = false;
     dragging.current = true;
     offset.current = { x: e.clientX - node.x, y: e.clientY - node.y };
     const onMv = (ev: MouseEvent) => {
-      if (dragging.current) onMove(node.id, ev.clientX - offset.current.x, ev.clientY - offset.current.y);
+      if (dragging.current) {
+        moved.current = true;
+        onMove(node.id, ev.clientX - offset.current.x, ev.clientY - offset.current.y);
+      }
     };
-    const onUp = () => { dragging.current = false; window.removeEventListener("mousemove", onMv); window.removeEventListener("mouseup", onUp); };
+    const onUp = () => {
+      dragging.current = false;
+      if (!moved.current) onSelect(node.id);
+      window.removeEventListener("mousemove", onMv);
+      window.removeEventListener("mouseup", onUp);
+    };
     window.addEventListener("mousemove", onMv);
     window.addEventListener("mouseup", onUp);
   };
@@ -66,7 +76,7 @@ function NodeCard({ node, selected, onSelect, onMove, onEdit }: {
       style={{
         position: "absolute", left: node.x, top: node.y,
         background: "#fff",
-        border: `2px solid ${selected ? nStyle.color : "#E0E4F0"}`,
+        border: `2px solid ${selected ? nStyle.color : connecting ? "#0077FF" : "#E0E4F0"}`,
         borderRadius: "14px", padding: "14px 16px", minWidth: "170px",
         boxShadow: selected ? `0 0 0 4px ${nStyle.color}22, 0 8px 24px rgba(0,0,0,0.1)` : "0 4px 12px rgba(0,0,0,0.08)",
         cursor: "grab", userSelect: "none", zIndex: selected ? 10 : 5,
@@ -90,8 +100,14 @@ function NodeCard({ node, selected, onSelect, onMove, onEdit }: {
           {node.message}
         </div>
       )}
-      <div style={{ position: "absolute", bottom: "-6px", left: "50%", transform: "translateX(-50%)", width: "12px", height: "12px", borderRadius: "50%", background: nStyle.color, border: "2px solid #fff", cursor: "crosshair" }} />
-      <div style={{ position: "absolute", top: "-6px", left: "50%", transform: "translateX(-50%)", width: "12px", height: "12px", borderRadius: "50%", background: "#E0E4F0", border: "2px solid #fff" }} />
+      {/* Нижняя точка — начало соединения */}
+      <div
+        title="Перетащить соединение"
+        onMouseDown={(e) => { e.stopPropagation(); onStartConnect(node.id); }}
+        style={{ position: "absolute", bottom: "-7px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", borderRadius: "50%", background: nStyle.color, border: "2px solid #fff", cursor: "crosshair", zIndex: 20 }}
+      />
+      {/* Верхняя точка — вход */}
+      <div style={{ position: "absolute", top: "-7px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", borderRadius: "50%", background: "#E0E4F0", border: "2px solid #fff", zIndex: 20 }} />
     </div>
   );
 }
@@ -311,17 +327,28 @@ export default function BotBuilder({ botId, onBack }: Props) {
     setNodes((prev) => prev.map((n) => n.id === id ? { ...n, x: Math.max(0, x), y: Math.max(0, y) } : n));
   }, []);
 
+  // Ref чтобы handleNodeSelect всегда видел актуальный connecting
+  const connectingRef = useRef<string | null>(null);
+  connectingRef.current = connecting;
+
   const handleNodeSelect = (id: string) => {
-    if (connecting && connecting !== id) {
-      if (!edges.some((e) => e.source === connecting && e.target === id)) {
-        setEdges((prev) => [...prev, { id: eid(), source: connecting, target: id }]);
-      }
+    const cur = connectingRef.current;
+    if (cur && cur !== id) {
+      setEdges((prev) => {
+        if (prev.some((e) => e.source === cur && e.target === id)) return prev;
+        return [...prev, { id: eid(), source: cur, target: id }];
+      });
       setConnecting(null);
       return;
     }
     setSelected(id);
     const n = nodes.find((n) => n.id === id);
     if (n) { setEditNode(n); setRightPanel("node"); }
+  };
+
+  const handleStartConnect = (id: string) => {
+    setConnecting(id);
+    setSelected(id);
   };
 
   const saveNode = (updated: Node) => {
@@ -378,12 +405,13 @@ export default function BotBuilder({ botId, onBack }: Props) {
           {promptFilled > 0 && <span style={{ background: "#FF6B6B", color: "#fff", borderRadius: "100px", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800 }}>{promptFilled}</span>}
         </button>
 
-        {/* Connect */}
-        <button
-          onClick={() => setConnecting(connecting ? null : (selected ?? null))}
-          style={{ background: connecting ? "#0077FF" : "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "9px", padding: "7px 13px", fontSize: "0.82rem", fontWeight: 600, color: connecting ? "#fff" : "#4A5280", cursor: "pointer" }}>
-          {connecting ? "✕ Отмена" : "🔗 Связать"}
-        </button>
+        {/* Cancel connect */}
+        {connecting && (
+          <button onClick={() => setConnecting(null)}
+            style={{ background: "#0077FF", border: "none", borderRadius: "9px", padding: "7px 13px", fontSize: "0.82rem", fontWeight: 600, color: "#fff", cursor: "pointer" }}>
+            ✕ Отмена связи
+          </button>
+        )}
 
         {/* Save */}
         <button onClick={saveToServer} disabled={saving}
@@ -406,9 +434,14 @@ export default function BotBuilder({ botId, onBack }: Props) {
           <div style={{ position: "relative", minWidth: "1600px", minHeight: "1000px" }}>
             <EdgesSVG nodes={nodes} edges={edges} />
             {nodes.map((node) => (
-              <NodeCard key={node.id} node={node} selected={selected === node.id || connecting === node.id}
-                onSelect={handleNodeSelect} onMove={moveNode}
-                onEdit={(n) => { setEditNode(n); setSelected(n.id); setRightPanel("node"); }} />
+              <NodeCard key={node.id} node={node}
+                selected={selected === node.id}
+                connecting={connecting === node.id}
+                onSelect={handleNodeSelect}
+                onMove={moveNode}
+                onEdit={(n) => { setEditNode(n); setSelected(n.id); setRightPanel("node"); }}
+                onStartConnect={handleStartConnect}
+              />
             ))}
             {nodes.length === 0 && (
               <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center", pointerEvents: "none" }}>
