@@ -38,8 +38,8 @@ const uid = () => `node_${++idCounter}`;
 const eid = () => `edge_${++idCounter}`;
 
 // ─── Node Card ─────────────────────────────────────────────────────
-function NodeCard({ node, selected, connecting, onSelect, onMove, onEdit, onStartConnect }: {
-  node: Node; selected: boolean; connecting: boolean;
+function NodeCard({ node, selected, connecting, connectingActive, onSelect, onMove, onEdit, onStartConnect }: {
+  node: Node; selected: boolean; connecting: boolean; connectingActive: boolean;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
   onEdit: (node: Node) => void;
@@ -51,12 +51,19 @@ function NodeCard({ node, selected, connecting, onSelect, onMove, onEdit, onStar
   const offset = useRef({ x: 0, y: 0 });
 
   const onMouseDown = (e: React.MouseEvent) => {
+    // Если режим соединения — просто выбираем этот узел как цель
+    if (connectingActive) {
+      e.stopPropagation();
+      onSelect(node.id);
+      return;
+    }
     e.stopPropagation();
     moved.current = false;
     dragging.current = true;
     offset.current = { x: e.clientX - node.x, y: e.clientY - node.y };
+    const startX = e.clientX, startY = e.clientY;
     const onMv = (ev: MouseEvent) => {
-      if (dragging.current) {
+      if (dragging.current && (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4)) {
         moved.current = true;
         onMove(node.id, ev.clientX - offset.current.x, ev.clientY - offset.current.y);
       }
@@ -76,10 +83,10 @@ function NodeCard({ node, selected, connecting, onSelect, onMove, onEdit, onStar
       style={{
         position: "absolute", left: node.x, top: node.y,
         background: "#fff",
-        border: `2px solid ${selected ? nStyle.color : connecting ? "#0077FF" : "#E0E4F0"}`,
+        border: `2px solid ${selected ? nStyle.color : connectingActive && !connecting ? "#0077FF66" : "#E0E4F0"}`,
         borderRadius: "14px", padding: "14px 16px", minWidth: "170px",
-        boxShadow: selected ? `0 0 0 4px ${nStyle.color}22, 0 8px 24px rgba(0,0,0,0.1)` : "0 4px 12px rgba(0,0,0,0.08)",
-        cursor: "grab", userSelect: "none", zIndex: selected ? 10 : 5,
+        boxShadow: selected ? `0 0 0 4px ${nStyle.color}22, 0 8px 24px rgba(0,0,0,0.1)` : connectingActive && !connecting ? "0 0 0 3px rgba(0,119,255,0.15)" : "0 4px 12px rgba(0,0,0,0.08)",
+        cursor: connectingActive ? "cell" : "grab", userSelect: "none", zIndex: selected ? 10 : 5,
         transition: "border-color 0.15s, box-shadow 0.15s",
         fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
       }}
@@ -102,12 +109,17 @@ function NodeCard({ node, selected, connecting, onSelect, onMove, onEdit, onStar
       )}
       {/* Нижняя точка — начало соединения */}
       <div
-        title="Перетащить соединение"
-        onMouseDown={(e) => { e.stopPropagation(); onStartConnect(node.id); }}
-        style={{ position: "absolute", bottom: "-7px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", borderRadius: "50%", background: nStyle.color, border: "2px solid #fff", cursor: "crosshair", zIndex: 20 }}
+        title="Кликни, затем кликни на другой узел"
+        onClick={(e) => { e.stopPropagation(); onStartConnect(node.id); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ position: "absolute", bottom: "-8px", left: "50%", transform: "translateX(-50%)", width: "16px", height: "16px", borderRadius: "50%", background: nStyle.color, border: "3px solid #fff", cursor: "crosshair", zIndex: 20, boxShadow: "0 0 0 2px " + nStyle.color + "55" }}
       />
       {/* Верхняя точка — вход */}
-      <div style={{ position: "absolute", top: "-7px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", borderRadius: "50%", background: "#E0E4F0", border: "2px solid #fff", zIndex: 20 }} />
+      <div
+        onClick={(e) => { e.stopPropagation(); onSelect(node.id); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", width: "16px", height: "16px", borderRadius: "50%", background: connecting ? "#0077FF" : "#C8CEE0", border: "3px solid #fff", cursor: connecting ? "cell" : "default", zIndex: 20 }}
+      />
     </div>
   );
 }
@@ -437,6 +449,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
               <NodeCard key={node.id} node={node}
                 selected={selected === node.id}
                 connecting={connecting === node.id}
+                connectingActive={!!connecting}
                 onSelect={handleNodeSelect}
                 onMove={moveNode}
                 onEdit={(n) => { setEditNode(n); setSelected(n.id); setRightPanel("node"); }}
