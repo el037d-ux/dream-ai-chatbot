@@ -1,5 +1,6 @@
 const AUTH_URL = "https://functions.poehali.dev/2f65484d-2036-4c51-b6f3-e01cc65ddf91";
 const BOTS_URL = "https://functions.poehali.dev/3a31590d-66a8-4a32-8018-9180fb2e6cb3";
+const LEADS_URL = "https://functions.poehali.dev/96aa177e-abc9-4ba3-ad48-bbf935357753";
 
 function getToken() {
   return localStorage.getItem("bf_token") || "";
@@ -32,4 +33,9 @@ export const api = {
   getBot: (id: number) => req(`${BOTS_URL}?action=get&id=${id}`, "GET", undefined, true),
   saveBot: (id: number, nodes: object[], edges: object[], prompt: object) =>
     req(`${BOTS_URL}?action=save&id=${id}`, "POST", { nodes, edges, prompt }, true),
+
+  saveLead: (botId: number, email: string, name: string, extra?: object) =>
+    req(`${LEADS_URL}?action=save&bot_id=${botId}`, "POST", { email, name, extra: extra || {} }),
+  getLeads: (botId: number) =>
+    req(`${LEADS_URL}?action=list&bot_id=${botId}`, "GET", undefined, true),
 };

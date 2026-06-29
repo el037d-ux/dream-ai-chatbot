@@ -9,6 +9,9 @@ interface Bot {
   dialogs_count: number;
   created_at: string;
 }
+interface Lead {
+  id: number; email: string; name: string; phone: string; created_at: string;
+}
 
 interface Props {
   user: { id: number; email: string; name: string };
@@ -17,7 +20,10 @@ interface Props {
   onGoHome: () => void;
 }
 
+type Tab = "bots" | "leads";
+
 export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props) {
+  const [tab, setTab] = useState<Tab>("bots");
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -25,6 +31,10 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
   const [newDesc, setNewDesc] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  // Leads
+  const [selectedBotForLeads, setSelectedBotForLeads] = useState<number | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
 
   useEffect(() => {
     api.getBots().then((d) => { setBots(d.bots); setLoading(false); }).catch(() => setLoading(false));
@@ -49,6 +59,18 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
     }
   };
 
+  const loadLeads = async (botId: number) => {
+    setSelectedBotForLeads(botId);
+    setLeadsLoading(true);
+    setTab("leads");
+    try {
+      const d = await api.getLeads(botId);
+      setLeads(d.leads);
+    } finally {
+      setLeadsLoading(false);
+    }
+  };
+
   const logout = async () => {
     await api.logout().catch(() => {});
     localStorage.removeItem("bf_token");
@@ -64,7 +86,8 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
           <span style={s.logoText}>BotFlow</span>
         </div>
         <nav style={s.nav}>
-          <div style={{ ...s.navItem, ...s.navActive }}>🤖 Мои боты</div>
+          <div style={{ ...s.navItem, ...(tab === "bots" ? s.navActive : {}) }} onClick={() => setTab("bots")}>🤖 Мои боты</div>
+          <div style={{ ...s.navItem, ...(tab === "leads" ? s.navActive : {}) }} onClick={() => { if (bots.length > 0) loadLeads(selectedBotForLeads ?? bots[0].id); }}>📧 Лиды</div>
           <div style={s.navItem}>📊 Аналитика</div>
           <div style={s.navItem}>🔗 Интеграции</div>
           <div style={s.navItem}>⚙️ Настройки</div>
@@ -85,63 +108,129 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
 
       {/* Main */}
       <main style={s.main}>
-        <div style={s.header}>
-          <div>
-            <h1 style={s.pageTitle}>Мои боты</h1>
-            <p style={s.pageSubtitle}>Управляйте и настраивайте своих чат-ботов</p>
-          </div>
-          <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать бота</button>
-        </div>
-
-        {/* Stats */}
-        <div style={s.stats}>
-          {[
-            { icon: "🤖", label: "Всего ботов", value: bots.length },
-            { icon: "✅", label: "Активных", value: bots.filter((b) => b.status === "active").length },
-            { icon: "💬", label: "Диалогов сегодня", value: 0 },
-            { icon: "⚡", label: "Uptime", value: "98%" },
-          ].map((st) => (
-            <div key={st.label} style={s.statCard}>
-              <div style={s.statIcon}>{st.icon}</div>
-              <div style={s.statValue}>{st.value}</div>
-              <div style={s.statLabel}>{st.label}</div>
+        {tab === "bots" && (<>
+          <div style={s.header}>
+            <div>
+              <h1 style={s.pageTitle}>Мои боты</h1>
+              <p style={s.pageSubtitle}>Управляйте и настраивайте своих чат-ботов</p>
             </div>
-          ))}
-        </div>
-
-        {/* Bots grid */}
-        {loading ? (
-          <div style={s.empty}>Загружаю ботов...</div>
-        ) : bots.length === 0 ? (
-          <div style={s.emptyBox}>
-            <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🤖</div>
-            <h3 style={s.emptyTitle}>Ботов пока нет</h3>
-            <p style={s.emptySub}>Создайте первого бота и начните автоматизировать общение с клиентами</p>
-            <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать первого бота</button>
+            <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать бота</button>
           </div>
-        ) : (
-          <div style={s.botsGrid}>
-            {bots.map((bot) => (
-              <div key={bot.id} style={s.botCard}>
-                <div style={s.botCardTop}>
-                  <div style={s.botIcon}>🤖</div>
-                  <span style={{ ...s.statusBadge, ...(bot.status === "active" ? s.statusActive : s.statusInactive) }}>
-                    {bot.status === "active" ? "Активен" : "Неактивен"}
-                  </span>
-                </div>
-                <h3 style={s.botName}>{bot.name}</h3>
-                <p style={s.botDesc}>{bot.description || "Нет описания"}</p>
-                <div style={s.botMeta}>
-                  <span>💬 {bot.dialogs_count} диалогов</span>
-                  <span>{new Date(bot.created_at).toLocaleDateString("ru")}</span>
-                </div>
-                <button style={s.editBtn} onClick={() => onOpenBot(bot.id)}>
-                  Открыть конструктор →
-                </button>
+
+          {/* Stats */}
+          <div style={s.stats}>
+            {[
+              { icon: "🤖", label: "Всего ботов", value: bots.length },
+              { icon: "✅", label: "Активных", value: bots.filter((b) => b.status === "active").length },
+              { icon: "💬", label: "Диалогов сегодня", value: 0 },
+              { icon: "⚡", label: "Uptime", value: "98%" },
+            ].map((st) => (
+              <div key={st.label} style={s.statCard}>
+                <div style={s.statIcon}>{st.icon}</div>
+                <div style={s.statValue}>{st.value}</div>
+                <div style={s.statLabel}>{st.label}</div>
               </div>
             ))}
           </div>
-        )}
+
+          {/* Bots grid */}
+          {loading ? (
+            <div style={s.empty}>Загружаю ботов...</div>
+          ) : bots.length === 0 ? (
+            <div style={s.emptyBox}>
+              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🤖</div>
+              <h3 style={s.emptyTitle}>Ботов пока нет</h3>
+              <p style={s.emptySub}>Создайте первого бота и начните автоматизировать общение с клиентами</p>
+              <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать первого бота</button>
+            </div>
+          ) : (
+            <div style={s.botsGrid}>
+              {bots.map((bot) => (
+                <div key={bot.id} style={s.botCard}>
+                  <div style={s.botCardTop}>
+                    <div style={s.botIcon}>🤖</div>
+                    <span style={{ ...s.statusBadge, ...(bot.status === "active" ? s.statusActive : s.statusInactive) }}>
+                      {bot.status === "active" ? "Активен" : "Неактивен"}
+                    </span>
+                  </div>
+                  <h3 style={s.botName}>{bot.name}</h3>
+                  <p style={s.botDesc}>{bot.description || "Нет описания"}</p>
+                  <div style={s.botMeta}>
+                    <span>💬 {bot.dialogs_count} диалогов</span>
+                    <span>{new Date(bot.created_at).toLocaleDateString("ru")}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button style={{ ...s.editBtn, flex: 1 }} onClick={() => onOpenBot(bot.id)}>Конструктор →</button>
+                    <button style={{ background: "rgba(224,64,251,0.1)", border: "1px solid rgba(224,64,251,0.25)", color: "#C026D3", borderRadius: "10px", padding: "10px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }} onClick={() => loadLeads(bot.id)}>📧 Лиды</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>)}
+
+        {tab === "leads" && (<>
+          <div style={s.header}>
+            <div>
+              <h1 style={s.pageTitle}>📧 Лиды</h1>
+              <p style={s.pageSubtitle}>
+                Бот: <strong>{bots.find((b) => b.id === selectedBotForLeads)?.name ?? "—"}</strong>
+                {" · "}
+                <button style={{ background: "none", border: "none", color: "#0077FF", cursor: "pointer", fontSize: "0.88rem", padding: 0 }} onClick={() => setTab("bots")}>← Назад к ботам</button>
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {bots.map((b) => (
+                <button key={b.id}
+                  style={{ background: b.id === selectedBotForLeads ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "#F4F6FF", color: b.id === selectedBotForLeads ? "#fff" : "#4A5280", border: "1.5px solid #E0E4F0", borderRadius: "10px", padding: "8px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
+                  onClick={() => loadLeads(b.id)}>{b.name}</button>
+              ))}
+            </div>
+          </div>
+
+          {leadsLoading ? (
+            <div style={s.empty}>Загружаю лиды...</div>
+          ) : leads.length === 0 ? (
+            <div style={s.emptyBox}>
+              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>📧</div>
+              <h3 style={s.emptyTitle}>Лидов пока нет</h3>
+              <p style={s.emptySub}>Добавьте узел «Сбор email» в сценарий бота и протестируйте его</p>
+            </div>
+          ) : (
+            <div style={{ background: "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid #F0F2F8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, color: "#0A0E27" }}>Всего лидов: {leads.length}</span>
+                <button
+                  onClick={() => {
+                    const csv = ["Email,Имя,Телефон,Дата", ...leads.map((l) => `${l.email},${l.name},${l.phone},${new Date(l.created_at).toLocaleDateString("ru")}`)].join("\n");
+                    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "leads.csv"; a.click();
+                  }}
+                  style={{ background: "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "9px", padding: "7px 14px", fontSize: "0.82rem", fontWeight: 600, color: "#4A5280", cursor: "pointer" }}>
+                  ⬇ Скачать CSV
+                </button>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#F8F9FF" }}>
+                    {["Email", "Имя", "Телефон", "Дата"].map((h) => (
+                      <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: "0.78rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((lead, i) => (
+                    <tr key={lead.id} style={{ borderTop: "1px solid #F0F2F8", background: i % 2 === 0 ? "#fff" : "#FAFBFF" }}>
+                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#0077FF", fontWeight: 600 }}>{lead.email}</td>
+                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#0A0E27" }}>{lead.name || "—"}</td>
+                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#8B92B8" }}>{lead.phone || "—"}</td>
+                      <td style={{ padding: "13px 20px", fontSize: "0.78rem", color: "#C8CEE0" }}>{new Date(lead.created_at).toLocaleDateString("ru")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>)}
       </main>
 
       {/* Modal create */}

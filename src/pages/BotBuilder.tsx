@@ -4,7 +4,7 @@ import { api } from "@/api";
 // ─── Types ────────────────────────────────────────────────────────
 interface Node {
   id: string;
-  type: "trigger" | "message" | "condition" | "action" | "ai";
+  type: "trigger" | "message" | "condition" | "action" | "ai" | "email";
   label: string;
   message: string;
   x: number;
@@ -24,6 +24,7 @@ interface BotInfo {
 const NODE_TYPES = [
   { type: "trigger",   label: "Триггер",    icon: "💬", color: "#00D4AA", bg: "rgba(0,212,170,0.1)" },
   { type: "message",   label: "Сообщение",  icon: "📤", color: "#0077FF", bg: "rgba(0,119,255,0.1)" },
+  { type: "email",     label: "Сбор email", icon: "📧", color: "#E040FB", bg: "rgba(224,64,251,0.1)" },
   { type: "condition", label: "Условие",    icon: "🔀", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
   { type: "action",    label: "Действие",   icon: "⚡", color: "#7B61FF", bg: "rgba(123,97,255,0.1)" },
   { type: "ai",        label: "AI-ответ",   icon: "🤖", color: "#FF6B6B", bg: "rgba(255,107,107,0.1)" },
@@ -293,27 +294,37 @@ const p: Record<string, React.CSSProperties> = {
 };
 
 // ─── Chat Test Panel ───────────────────────────────────────────────
-interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; }
+interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; special?: "email_saved" | "email_error"; }
 
-function ChatTestPanel({ nodes, edges, botName, onClose }: {
-  nodes: Node[]; edges: Edge[]; botName: string; onClose: () => void;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
+  nodes: Node[]; edges: Edge[]; botName: string; botId: number; onClose: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
+  // Когда бот ожидает email от пользователя
+  const [awaitingEmail, setAwaitingEmail] = useState(false);
+  const [collectedName, setCollectedName] = useState("");
+  const [leadsCount, setLeadsCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Найти стартовый узел (trigger)
   const startNode = nodes.find((n) => n.type === "trigger");
+
+  const addBotMsg = (text: string, nodeId?: string, special?: ChatMsg["special"]) =>
+    setMessages((prev) => [...prev, { from: "bot", text, nodeId, special }]);
 
   const reset = () => {
     setMessages([]);
     setCurrentNodeId(null);
     setInput("");
+    setAwaitingEmail(false);
+    setCollectedName("");
     if (startNode) {
       setTimeout(() => {
-        setMessages([{ from: "bot", text: startNode.message || "Привет! Чем могу помочь?", nodeId: startNode.id }]);
+        addBotMsg(startNode.message || "Привет! Чем могу помочь?", startNode.id);
         setCurrentNodeId(startNode.id);
       }, 300);
     }
@@ -325,17 +336,14 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, thinking]);
 
-  // Найти следующий узел по рёбрам от currentNodeId
   const getNextNode = (fromId: string): Node | null => {
     const edge = edges.find((e) => e.source === fromId);
     if (!edge) return null;
     return nodes.find((n) => n.id === edge.target) ?? null;
   };
 
-  // Найти узел по ключевым словам в тексте пользователя
   const findMatchingNode = (userText: string, fromId: string | null): Node | null => {
     const text = userText.toLowerCase();
-    // Сначала ищем по условным узлам, следующим за текущим
     if (fromId) {
       const directEdges = edges.filter((e) => e.source === fromId);
       for (const edge of directEdges) {
@@ -349,9 +357,47 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
         if (first) return first;
       }
     }
-    // Fallback — ищем любой узел с совпадением по label
     const match = nodes.find((n) => n.type !== "trigger" && n.label.toLowerCase().split(/[,;]/).some((kw) => text.includes(kw.trim())));
     return match ?? null;
+  };
+
+  // Обработка узла email — запускаем сбор данных
+  const handleEmailNode = (emailNode: Node) => {
+    addBotMsg(emailNode.message || "Пожалуйста, введите ваш email:", emailNode.id);
+    setCurrentNodeId(emailNode.id);
+    setAwaitingEmail(true);
+  };
+
+  // Сохранение лида после получения email
+  const handleEmailInput = async (userText: string) => {
+    const email = userText.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      setThinking(false);
+      addBotMsg("Это не похоже на email. Попробуйте ещё раз — например: ivan@example.com");
+      return;
+    }
+    try {
+      const res = await api.saveLead(botId, email, collectedName);
+      setThinking(false);
+      setAwaitingEmail(false);
+      if (res.duplicate) {
+        addBotMsg("Этот email уже зарегистрирован. Продолжаем!", undefined, "email_saved");
+      } else {
+        setLeadsCount((c) => c + 1);
+        addBotMsg(`✅ Email сохранён! Спасибо, мы свяжемся с вами.`, undefined, "email_saved");
+      }
+      // Переходим к следующему узлу после email-узла
+      const afterEmail = getNextNode(currentNodeId!);
+      if (afterEmail) {
+        setTimeout(() => {
+          addBotMsg(afterEmail.message || `[${afterEmail.label}]`, afterEmail.id);
+          setCurrentNodeId(afterEmail.id);
+        }, 600);
+      }
+    } catch {
+      setThinking(false);
+      addBotMsg("Не удалось сохранить email. Попробуйте ещё раз.", undefined, "email_error");
+    }
   };
 
   const sendMessage = () => {
@@ -361,24 +407,39 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
     setMessages((prev) => [...prev, { from: "user", text: userText }]);
     setThinking(true);
 
+    // Если ожидаем email — обрабатываем как email
+    if (awaitingEmail) {
+      setTimeout(() => handleEmailInput(userText), 500);
+      return;
+    }
+
+    // Запоминаем имя если это первое сообщение пользователя
+    if (!collectedName && messages.filter((m) => m.from === "user").length === 0) {
+      setCollectedName(userText);
+    }
+
     setTimeout(() => {
       setThinking(false);
       const next = findMatchingNode(userText, currentNodeId);
       if (next) {
-        setMessages((prev) => [...prev, { from: "bot", text: next.message || `[${next.label}]`, nodeId: next.id }]);
+        if (next.type === "email") {
+          handleEmailNode(next);
+          return;
+        }
+        addBotMsg(next.message || `[${next.label}]`, next.id);
         setCurrentNodeId(next.id);
-        // Если за ним есть автоматический узел (message/action) — добавляем его тоже
         const afterNext = getNextNode(next.id);
         if (afterNext && afterNext.type !== "trigger" && afterNext.type !== "condition") {
           setTimeout(() => {
-            setMessages((prev) => [...prev, { from: "bot", text: afterNext.message || `[${afterNext.label}]`, nodeId: afterNext.id }]);
+            if (afterNext.type === "email") { handleEmailNode(afterNext); return; }
+            addBotMsg(afterNext.message || `[${afterNext.label}]`, afterNext.id);
             setCurrentNodeId(afterNext.id);
           }, 600);
         }
       } else {
-        setMessages((prev) => [...prev, { from: "bot", text: "Не совсем понял. Попробуйте переформулировать." }]);
+        addBotMsg("Не совсем понял. Попробуйте переформулировать.");
       }
-    }, 700 + Math.random() * 400);
+    }, 700 + Math.random() * 300);
   };
 
   const noNodes = nodes.length === 0;
@@ -390,11 +451,21 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
         <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🤖</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.9rem" }}>{botName}</div>
-          <div style={{ fontSize: "0.72rem", color: "#00A884", fontWeight: 600 }}>● Тест-режим</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "0.72rem", color: "#00A884", fontWeight: 600 }}>● Тест-режим</span>
+            {leadsCount > 0 && <span style={{ fontSize: "0.68rem", background: "rgba(224,64,251,0.12)", color: "#C026D3", borderRadius: "100px", padding: "1px 7px", fontWeight: 700 }}>📧 {leadsCount} лид{leadsCount > 1 ? "а" : ""}</span>}
+          </div>
         </div>
         <button onClick={reset} title="Сбросить чат" style={{ background: "#F4F6FF", border: "none", borderRadius: "8px", padding: "6px 8px", cursor: "pointer", fontSize: "0.8rem", color: "#4A5280" }}>↺</button>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "1rem" }}>✕</button>
       </div>
+
+      {/* Email mode banner */}
+      {awaitingEmail && (
+        <div style={{ padding: "8px 14px", background: "rgba(224,64,251,0.08)", borderBottom: "1px solid rgba(224,64,251,0.2)", fontSize: "0.75rem", color: "#C026D3", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+          📧 Ожидаю email-адрес...
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: "10px", background: "#F8F9FF" }}>
@@ -407,12 +478,17 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
         {messages.map((msg, i) => (
           <div key={i} style={{ display: "flex", flexDirection: msg.from === "user" ? "row-reverse" : "row", gap: "8px", alignItems: "flex-end" }}>
             {msg.from === "bot" && (
-              <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>🤖</div>
+              <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: msg.special === "email_saved" ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>
+                {msg.special === "email_saved" ? "📧" : "🤖"}
+              </div>
             )}
             <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", gap: "3px", alignItems: msg.from === "user" ? "flex-end" : "flex-start" }}>
               <div style={{
-                background: msg.from === "user" ? "linear-gradient(135deg,#0077FF,#7B61FF)" : "#fff",
-                color: msg.from === "user" ? "#fff" : "#0A0E27",
+                background: msg.from === "user"
+                  ? "linear-gradient(135deg,#0077FF,#7B61FF)"
+                  : msg.special === "email_saved" ? "rgba(224,64,251,0.08)" : msg.special === "email_error" ? "#fff0f0" : "#fff",
+                color: msg.from === "user" ? "#fff" : msg.special === "email_saved" ? "#C026D3" : msg.special === "email_error" ? "#d63031" : "#0A0E27",
+                border: msg.special === "email_saved" ? "1.5px solid rgba(224,64,251,0.25)" : msg.special === "email_error" ? "1.5px solid #ffd0d0" : "none",
                 borderRadius: msg.from === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                 padding: "9px 13px", fontSize: "0.86rem", lineHeight: 1.5,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
@@ -441,12 +517,13 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
         )}
       </div>
 
-      {/* Подсказка по следующему шагу */}
-      {currentNodeId && (() => {
+      {/* Подсказка */}
+      {currentNodeId && !awaitingEmail && (() => {
         const next = getNextNode(currentNodeId);
         return next ? (
           <div style={{ padding: "6px 14px", background: "#F0F4FF", borderTop: "1px solid #E0E4F0", fontSize: "0.72rem", color: "#8B92B8" }}>
-            Следующий узел: <span style={{ color: "#0077FF", fontWeight: 600 }}>{next.label}</span>
+            Следующий: <span style={{ color: "#0077FF", fontWeight: 600 }}>{next.label}</span>
+            {next.type === "email" && <span style={{ color: "#C026D3", marginLeft: "4px" }}>📧</span>}
           </div>
         ) : null;
       })()}
@@ -454,18 +531,19 @@ function ChatTestPanel({ nodes, edges, botName, onClose }: {
       {/* Input */}
       <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px" }}>
         <input
-          style={{ flex: 1, padding: "9px 13px", border: "1.5px solid #E0E4F0", borderRadius: "22px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", background: "#F8F9FF" }}
-          placeholder="Написать сообщение..."
+          style={{ flex: 1, padding: "9px 13px", border: `1.5px solid ${awaitingEmail ? "#E040FB" : "#E0E4F0"}`, borderRadius: "22px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", background: awaitingEmail ? "rgba(224,64,251,0.04)" : "#F8F9FF", transition: "border 0.2s" }}
+          placeholder={awaitingEmail ? "Введите email (например: ivan@mail.ru)" : "Написать сообщение..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           disabled={noNodes}
+          type={awaitingEmail ? "email" : "text"}
         />
         <button
           onClick={sendMessage}
           disabled={!input.trim() || noNodes}
-          style={{ width: "38px", height: "38px", borderRadius: "50%", background: input.trim() ? "linear-gradient(135deg,#0077FF,#7B61FF)" : "#E0E4F0", border: "none", cursor: input.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, transition: "background 0.2s" }}>
-          ➤
+          style={{ width: "38px", height: "38px", borderRadius: "50%", background: input.trim() ? (awaitingEmail ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "linear-gradient(135deg,#0077FF,#7B61FF)") : "#E0E4F0", border: "none", cursor: input.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, transition: "background 0.2s" }}>
+          {awaitingEmail ? "📧" : "➤"}
         </button>
       </div>
       <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
@@ -680,6 +758,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
             nodes={nodes}
             edges={edges}
             botName={bot?.name ?? "Бот"}
+            botId={botId}
             onClose={() => setRightPanel(null)}
           />
         )}
