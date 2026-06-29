@@ -292,8 +292,189 @@ const p: Record<string, React.CSSProperties> = {
   saveBtn: { flex: 2, background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "9px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" },
 };
 
+// ─── Chat Test Panel ───────────────────────────────────────────────
+interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; }
+
+function ChatTestPanel({ nodes, edges, botName, onClose }: {
+  nodes: Node[]; edges: Edge[]; botName: string; onClose: () => void;
+}) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Найти стартовый узел (trigger)
+  const startNode = nodes.find((n) => n.type === "trigger");
+
+  const reset = () => {
+    setMessages([]);
+    setCurrentNodeId(null);
+    setInput("");
+    if (startNode) {
+      setTimeout(() => {
+        setMessages([{ from: "bot", text: startNode.message || "Привет! Чем могу помочь?", nodeId: startNode.id }]);
+        setCurrentNodeId(startNode.id);
+      }, 300);
+    }
+  };
+
+  useEffect(() => { reset(); }, [nodes.length]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, thinking]);
+
+  // Найти следующий узел по рёбрам от currentNodeId
+  const getNextNode = (fromId: string): Node | null => {
+    const edge = edges.find((e) => e.source === fromId);
+    if (!edge) return null;
+    return nodes.find((n) => n.id === edge.target) ?? null;
+  };
+
+  // Найти узел по ключевым словам в тексте пользователя
+  const findMatchingNode = (userText: string, fromId: string | null): Node | null => {
+    const text = userText.toLowerCase();
+    // Сначала ищем по условным узлам, следующим за текущим
+    if (fromId) {
+      const directEdges = edges.filter((e) => e.source === fromId);
+      for (const edge of directEdges) {
+        const candidate = nodes.find((n) => n.id === edge.target);
+        if (!candidate) continue;
+        if (candidate.type === "condition" && candidate.label.toLowerCase().split(/[,;]/).some((kw) => text.includes(kw.trim()))) return candidate;
+        if (candidate.type !== "condition") return candidate;
+      }
+      if (directEdges.length > 0) {
+        const first = nodes.find((n) => n.id === directEdges[0].target);
+        if (first) return first;
+      }
+    }
+    // Fallback — ищем любой узел с совпадением по label
+    const match = nodes.find((n) => n.type !== "trigger" && n.label.toLowerCase().split(/[,;]/).some((kw) => text.includes(kw.trim())));
+    return match ?? null;
+  };
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+    const userText = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { from: "user", text: userText }]);
+    setThinking(true);
+
+    setTimeout(() => {
+      setThinking(false);
+      const next = findMatchingNode(userText, currentNodeId);
+      if (next) {
+        setMessages((prev) => [...prev, { from: "bot", text: next.message || `[${next.label}]`, nodeId: next.id }]);
+        setCurrentNodeId(next.id);
+        // Если за ним есть автоматический узел (message/action) — добавляем его тоже
+        const afterNext = getNextNode(next.id);
+        if (afterNext && afterNext.type !== "trigger" && afterNext.type !== "condition") {
+          setTimeout(() => {
+            setMessages((prev) => [...prev, { from: "bot", text: afterNext.message || `[${afterNext.label}]`, nodeId: afterNext.id }]);
+            setCurrentNodeId(afterNext.id);
+          }, 600);
+        }
+      } else {
+        setMessages((prev) => [...prev, { from: "bot", text: "Не совсем понял. Попробуйте переформулировать." }]);
+      }
+    }, 700 + Math.random() * 400);
+  };
+
+  const noNodes = nodes.length === 0;
+
+  return (
+    <div style={{ width: "320px", background: "#fff", borderLeft: "1px solid #E0E4F0", display: "flex", flexDirection: "column", flexShrink: 0, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {/* Header */}
+      <div style={{ padding: "14px 16px", borderBottom: "3px solid #00D4AA", display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🤖</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.9rem" }}>{botName}</div>
+          <div style={{ fontSize: "0.72rem", color: "#00A884", fontWeight: 600 }}>● Тест-режим</div>
+        </div>
+        <button onClick={reset} title="Сбросить чат" style={{ background: "#F4F6FF", border: "none", borderRadius: "8px", padding: "6px 8px", cursor: "pointer", fontSize: "0.8rem", color: "#4A5280" }}>↺</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "1rem" }}>✕</button>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: "10px", background: "#F8F9FF" }}>
+        {noNodes && (
+          <div style={{ textAlign: "center", color: "#8B92B8", fontSize: "0.85rem", marginTop: "40px" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🎯</div>
+            Добавьте узлы в сценарий, чтобы протестировать бота
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: msg.from === "user" ? "row-reverse" : "row", gap: "8px", alignItems: "flex-end" }}>
+            {msg.from === "bot" && (
+              <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>🤖</div>
+            )}
+            <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", gap: "3px", alignItems: msg.from === "user" ? "flex-end" : "flex-start" }}>
+              <div style={{
+                background: msg.from === "user" ? "linear-gradient(135deg,#0077FF,#7B61FF)" : "#fff",
+                color: msg.from === "user" ? "#fff" : "#0A0E27",
+                borderRadius: msg.from === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                padding: "9px 13px", fontSize: "0.86rem", lineHeight: 1.5,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              }}>
+                {msg.text}
+              </div>
+              {msg.nodeId && (
+                <div style={{ fontSize: "0.65rem", color: "#C8CEE0", paddingLeft: "4px" }}>
+                  узел: {nodes.find((n) => n.id === msg.nodeId)?.label}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {thinking && (
+          <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+            <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem" }}>🤖</div>
+            <div style={{ background: "#fff", borderRadius: "16px 16px 16px 4px", padding: "10px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#C8CEE0", animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Подсказка по следующему шагу */}
+      {currentNodeId && (() => {
+        const next = getNextNode(currentNodeId);
+        return next ? (
+          <div style={{ padding: "6px 14px", background: "#F0F4FF", borderTop: "1px solid #E0E4F0", fontSize: "0.72rem", color: "#8B92B8" }}>
+            Следующий узел: <span style={{ color: "#0077FF", fontWeight: 600 }}>{next.label}</span>
+          </div>
+        ) : null;
+      })()}
+
+      {/* Input */}
+      <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px" }}>
+        <input
+          style={{ flex: 1, padding: "9px 13px", border: "1.5px solid #E0E4F0", borderRadius: "22px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", background: "#F8F9FF" }}
+          placeholder="Написать сообщение..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          disabled={noNodes}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!input.trim() || noNodes}
+          style={{ width: "38px", height: "38px", borderRadius: "50%", background: input.trim() ? "linear-gradient(135deg,#0077FF,#7B61FF)" : "#E0E4F0", border: "none", cursor: input.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, transition: "background 0.2s" }}>
+          ➤
+        </button>
+      </div>
+      <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
+    </div>
+  );
+}
+
 // ─── Main BotBuilder ───────────────────────────────────────────────
-type RightPanel = "node" | "prompt" | null;
+type RightPanel = "node" | "prompt" | "test" | null;
 
 interface Props { botId: number; onBack: () => void; }
 
@@ -417,6 +598,13 @@ export default function BotBuilder({ botId, onBack }: Props) {
           {promptFilled > 0 && <span style={{ background: "#FF6B6B", color: "#fff", borderRadius: "100px", width: "18px", height: "18px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800 }}>{promptFilled}</span>}
         </button>
 
+        {/* Test button */}
+        <button
+          onClick={() => setRightPanel(rightPanel === "test" ? null : "test")}
+          style={{ background: rightPanel === "test" ? "rgba(0,212,170,0.12)" : "#F4F6FF", border: `1.5px solid ${rightPanel === "test" ? "#00D4AA" : "#E0E4F0"}`, borderRadius: "9px", padding: "7px 13px", fontSize: "0.82rem", fontWeight: 700, color: rightPanel === "test" ? "#00A884" : "#4A5280", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+          ▶ Тестировать
+        </button>
+
         {/* Cancel connect */}
         {connecting && (
           <button onClick={() => setConnecting(null)}
@@ -484,6 +672,16 @@ export default function BotBuilder({ botId, onBack }: Props) {
         {/* Right panel: AI prompt */}
         {rightPanel === "prompt" && (
           <AIPromptPanel prompt={prompt} onChange={setPrompt} />
+        )}
+
+        {/* Right panel: Chat test */}
+        {rightPanel === "test" && (
+          <ChatTestPanel
+            nodes={nodes}
+            edges={edges}
+            botName={bot?.name ?? "Бот"}
+            onClose={() => setRightPanel(null)}
+          />
         )}
       </div>
     </div>
