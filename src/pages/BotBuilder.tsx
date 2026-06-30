@@ -1343,12 +1343,23 @@ export default function BotBuilder({ botId, onBack }: Props) {
       setNodes(d.nodes.map((n: Node) => ({ ...n, x: n.x ?? 100, y: n.y ?? 100 })));
       setEdges(d.edges);
       setPrompt({
-        persona: d.bot.prompt_persona || "",
-        goal: d.bot.prompt_goal || "",
-        context: d.bot.prompt_context || "",
+        // Новые поля
+        botName:    d.bot.prompt_bot_name    || "",
+        botRole:    d.bot.prompt_bot_role    || "",
+        traits:     d.bot.prompt_traits      || "",
+        tasks:      d.bot.prompt_tasks       || "",
+        address:    d.bot.prompt_address     || "ты",
+        tone:       d.bot.prompt_tone        || "",
+        emoji:      d.bot.prompt_emoji       || "",
+        structure:  d.bot.prompt_structure   || "",
+        format:     d.bot.prompt_format      || "",
+        // Legacy поля
+        persona:      d.bot.prompt_persona      || "",
+        goal:         d.bot.prompt_goal         || "",
+        context:      d.bot.prompt_context      || "",
         instructions: d.bot.prompt_instructions || "",
-        constraints: d.bot.prompt_constraints || "",
-        examples: d.bot.prompt_examples || "",
+        constraints:  d.bot.prompt_constraints  || "",
+        examples:     d.bot.prompt_examples     || "",
       });
     });
   }, [botId]);

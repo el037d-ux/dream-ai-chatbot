@@ -85,7 +85,10 @@ def handler(event: dict, context) -> dict:
             return err("Укажите id бота")
         bot_id = int(bot_id_str)
         cur.execute("""SELECT id, name, description, status, dialogs_count, created_at,
-            prompt_persona, prompt_goal, prompt_context, prompt_instructions, prompt_constraints, prompt_examples
+            prompt_persona, prompt_goal, prompt_context, prompt_instructions, prompt_constraints, prompt_examples,
+            COALESCE(prompt_bot_name,''), COALESCE(prompt_bot_role,''), COALESCE(prompt_traits,''),
+            COALESCE(prompt_tasks,''), COALESCE(prompt_address,'ты'), COALESCE(prompt_tone,''),
+            COALESCE(prompt_emoji,''), COALESCE(prompt_structure,''), COALESCE(prompt_format,'')
             FROM bots WHERE id=%s AND user_id=%s""", (bot_id, user_id))
         r = cur.fetchone()
         if not r:
@@ -111,7 +114,10 @@ def handler(event: dict, context) -> dict:
         return ok({"bot": {
             "id": r[0], "name": r[1], "description": r[2], "status": r[3], "dialogs_count": r[4], "created_at": str(r[5]),
             "prompt_persona": r[6] or "", "prompt_goal": r[7] or "", "prompt_context": r[8] or "",
-            "prompt_instructions": r[9] or "", "prompt_constraints": r[10] or "", "prompt_examples": r[11] or ""
+            "prompt_instructions": r[9] or "", "prompt_constraints": r[10] or "", "prompt_examples": r[11] or "",
+            "prompt_bot_name": r[12], "prompt_bot_role": r[13], "prompt_traits": r[14],
+            "prompt_tasks": r[15], "prompt_address": r[16], "prompt_tone": r[17],
+            "prompt_emoji": r[18], "prompt_structure": r[19], "prompt_format": r[20],
         }, "nodes": nodes, "edges": edges})
 
     # ── SAVE ─────────────────────────────────────────────────────────
@@ -156,10 +162,16 @@ def handler(event: dict, context) -> dict:
                 (bot_id, e["id"], e["source"], e["target"]))
         cur.execute("""UPDATE bots SET updated_at=NOW(),
             prompt_persona=%s, prompt_goal=%s, prompt_context=%s,
-            prompt_instructions=%s, prompt_constraints=%s, prompt_examples=%s
+            prompt_instructions=%s, prompt_constraints=%s, prompt_examples=%s,
+            prompt_bot_name=%s, prompt_bot_role=%s, prompt_traits=%s,
+            prompt_tasks=%s, prompt_address=%s, prompt_tone=%s,
+            prompt_emoji=%s, prompt_structure=%s, prompt_format=%s
             WHERE id=%s""", (
             prompt.get("persona",""), prompt.get("goal",""), prompt.get("context",""),
             prompt.get("instructions",""), prompt.get("constraints",""), prompt.get("examples",""),
+            prompt.get("botName",""), prompt.get("botRole",""), prompt.get("traits",""),
+            prompt.get("tasks",""), prompt.get("address","ты"), prompt.get("tone",""),
+            prompt.get("emoji",""), prompt.get("structure",""), prompt.get("format",""),
             bot_id
         ))
         conn.commit()
