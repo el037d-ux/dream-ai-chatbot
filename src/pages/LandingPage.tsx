@@ -408,8 +408,8 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
           <div className="lp-pgrid">
             {[
               {name:"Старт",desc:"Для тестирования",pm:"0",py:"0",per:"навсегда бесплатно",feats:["До 100 диалогов","1 бот","Базовый конструктор","Шаблоны","Email-поддержка"],dis:["CRM-интеграции","AI-ответы"],btnTxt:"Начать бесплатно",btnCls:"lp-btn-outline"},
-              {name:"Бизнес",desc:"Для растущих компаний",pm:"2990",py:"2390",per:"в месяц",feats:["До 10 000 диалогов","До 5 ботов","Конструктор Pro","CRM-интеграция","GPT (1000 запросов)","Аналитика","Приоритетная поддержка"],dis:[],btnTxt:"Выбрать тариф",btnCls:"lp-btn-primary",featured:true},
-              {name:"Премиум",desc:"Для крупных проектов",pm:"9990",py:"7990",per:"в месяц",feats:["Безлимитные диалоги","Безлимитные боты","White-label","Все CRM","GPT без ограничений","API доступ","Персональный менеджер"],dis:[],btnTxt:"Связаться",btnCls:"lp-btn-outline"},
+              {name:"Бизнес",desc:"Для растущих компаний",pm:"1990",py:"1590",per:"в месяц",feats:["До 10 000 диалогов","До 5 ботов","Конструктор Pro","CRM-интеграция","GPT (1000 запросов)","Аналитика","Приоритетная поддержка"],dis:[],btnTxt:"Выбрать тариф",btnCls:"lp-btn-primary",featured:true},
+              {name:"Премиум",desc:"Для крупных проектов",pm:"7990",py:"6390",per:"в месяц",feats:["Безлимитные диалоги","Безлимитные боты","White-label","Все CRM","GPT без ограничений","API доступ","Персональный менеджер"],dis:[],btnTxt:"Связаться",btnCls:"lp-btn-outline"},
             ].map((p)=>(
               <div key={p.name} className={`lp-pcard anim-card${p.featured?" featured":""}`}>
                 {p.featured && <div className="pop-badge">Популярный</div>}
@@ -425,33 +425,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
                   {p.dis.map((f)=><li key={f} className="dis">{f}</li>)}
                 </ul>
                 <button className={`lp-btn ${p.btnCls}`} onClick={p.featured ? onRegister : undefined}>{p.btnTxt}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="lp-section lp-testi-bg">
-        <div className="lp-container">
-          <div className="lp-sec-hdr">
-            <div className="lp-tag">Отзывы</div>
-            <h2 className="lp-sec-title">Что говорят клиенты</h2>
-            <p className="lp-sec-sub">Более 3000 компаний уже автоматизировали общение</p>
-          </div>
-          <div className="lp-tgrid">
-            {[
-              {i:"АК",n:"Анна Ковалёва",r:"Владелец магазина одежды",t:"Запустили бота за один вечер. Конверсия выросла на 34%, нагрузка на поддержку снизилась вдвое."},
-              {i:"ДМ",n:"Дмитрий Морозов",r:"Руководитель отдела продаж",t:"Интеграция с AmoCRM работает идеально. Менеджеры экономят по 3 часа в день на рутине."},
-              {i:"ЕС",n:"Елена Смирнова",r:"Маркетолог, digital-агентство",t:"AI-функции — это магия. Клиенты не понимают, что общаются с роботом."},
-            ].map((t)=>(
-              <div key={t.n} className="lp-tcard anim-card">
-                <div className="t-stars">★★★★★</div>
-                <p className="t-text">"{t.t}"</p>
-                <div className="t-author">
-                  <div className="t-avatar">{t.i}</div>
-                  <div className="t-info"><strong>{t.n}</strong><span>{t.r}</span></div>
-                </div>
               </div>
             ))}
           </div>
