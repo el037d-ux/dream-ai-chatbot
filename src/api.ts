@@ -37,6 +37,8 @@ export const api = {
   getBot: (id: number) => req(`${BOTS_URL}?action=get&id=${id}`, "GET", undefined, true),
   saveBot: (id: number, nodes: object[], edges: object[], prompt: object) =>
     req(`${BOTS_URL}?action=save&id=${id}`, "POST", { nodes, edges, prompt }, true),
+  deleteBot: (id: number) =>
+    req(`${BOTS_URL}?action=delete&id=${id}`, "POST", {}, true),
 
   saveLead: (botId: number, email: string, name: string, extra?: object) =>
     req(`${LEADS_URL}?action=save&bot_id=${botId}`, "POST", { email, name, extra: extra || {} }),

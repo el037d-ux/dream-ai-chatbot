@@ -49,7 +49,7 @@ def handler(event: dict, context) -> dict:
     if action == "list":
         cur.execute("""
             SELECT id, name, description, status, dialogs_count, created_at
-            FROM bots WHERE user_id = %s ORDER BY created_at DESC
+            FROM bots WHERE user_id = %s AND status != 'deleted' ORDER BY created_at DESC
         """, (user_id,))
         bots = [{"id": r[0], "name": r[1], "description": r[2], "status": r[3],
                  "dialogs_count": r[4], "created_at": str(r[5])} for r in cur.fetchall()]
@@ -224,6 +224,24 @@ def handler(event: dict, context) -> dict:
             conn.commit()
             conn.close()
             return ok({"ok": True, "id": row[0]})
+
+    # ── DELETE BOT ───────────────────────────────────────────────────
+    if action == "delete":
+        if not bot_id_str.isdigit():
+            conn.close()
+            return err("Укажите id бота")
+        bot_id = int(bot_id_str)
+        cur.execute("SELECT id FROM bots WHERE id=%s AND user_id=%s", (bot_id, user_id))
+        if not cur.fetchone():
+            conn.close()
+            return err("Бот не найден", 404)
+        # Удаляем связанные данные вручную (без CASCADE)
+        cur.execute("UPDATE bot_nodes SET type='deleted' WHERE bot_id=%s", (bot_id,))
+        cur.execute("UPDATE bot_edges SET source_node_id='deleted' WHERE bot_id=%s", (bot_id,))
+        cur.execute("UPDATE bots SET status='deleted', name=CONCAT('[удалён] ', name), updated_at=NOW() WHERE id=%s", (bot_id,))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True})
 
     # ── WEBHOOK DELETE ───────────────────────────────────────────────
     if action == "webhook-toggle":

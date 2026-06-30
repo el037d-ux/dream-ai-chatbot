@@ -385,9 +385,12 @@ function inp(extra?: React.CSSProperties): React.CSSProperties {
 }
 function lbl(): React.CSSProperties { return { fontSize: "0.73rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }; }
 
+const EMPTY_PROMPT: Prompt = { botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "" };
+
 function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Prompt) => void }) {
   const [open, setOpen] = useState<SectionKey>("identity");
   const [showPreview, setShowPreview] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const set = (k: keyof Prompt) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     onChange({ ...prompt, [k]: e.target.value });
 
@@ -410,7 +413,7 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
           <span style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.92rem", flex: 1 }}>Настройка AI-промпта</span>
           {totalFilled > 0 && (
             <button
-              onClick={() => { if (confirm("Очистить все поля промпта?")) onChange({ botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "" }); }}
+              onClick={() => setConfirmReset(true)}
               title="Очистить промпт"
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", color: "#8B92B8", padding: "2px 6px", borderRadius: "6px" }}>
               🗑
@@ -594,6 +597,29 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
           </div>
         )}
       </div>
+
+      {/* Попап подтверждения сброса промпта */}
+      {confirmReset && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setConfirmReset(false)}>
+          <div style={{ background: "#fff", borderRadius: "18px", padding: "28px 32px", maxWidth: "340px", width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: "2rem", marginBottom: "10px" }}>🗑</div>
+            <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "1rem", marginBottom: "8px" }}>Очистить AI-промпт?</div>
+            <div style={{ color: "#8B92B8", fontSize: "0.85rem", marginBottom: "22px" }}>Все настройки роли, цели, тона и примеры будут удалены.</div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setConfirmReset(false)}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E0E4F0", background: "#F4F6FF", color: "#4A5280", fontWeight: 600, fontSize: "0.88rem", cursor: "pointer" }}>
+                Отмена
+              </button>
+              <button onClick={() => { onChange(EMPTY_PROMPT); setConfirmReset(false); }}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "none", background: "#d63031", color: "#fff", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer" }}>
+                Очистить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1307,6 +1333,8 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const [saved, setSaved] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1401,6 +1429,12 @@ export default function BotBuilder({ botId, onBack }: Props) {
         <button style={{ background: "none", border: "none", cursor: "pointer", color: "#4A5280", fontSize: "0.88rem", fontWeight: 600, padding: "6px 10px", borderRadius: "8px" }} onClick={onBack}>← Назад</button>
         <div style={{ width: "1px", height: "24px", background: "#E0E4F0" }} />
         <div style={{ fontWeight: 800, color: "#0A0E27", fontSize: "0.95rem" }}>{bot?.name ?? "..."}</div>
+        <button
+          onClick={() => setConfirmDelete(true)}
+          title="Удалить бота"
+          style={{ background: "none", border: "1px solid #ffd0d0", borderRadius: "8px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, color: "#d63031", cursor: "pointer" }}>
+          🗑 Удалить
+        </button>
         <div style={{ flex: 1 }} />
 
         {/* Node palette */}
@@ -1546,6 +1580,40 @@ export default function BotBuilder({ botId, onBack }: Props) {
           setRightPanel("prompt");
         }}
       />
+
+      {/* Подтверждение удаления бота */}
+      {confirmDelete && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setConfirmDelete(false)}>
+          <div style={{ background: "#fff", borderRadius: "18px", padding: "28px 32px", maxWidth: "380px", width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: "2.2rem", marginBottom: "12px" }}>⚠️</div>
+            <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "1.05rem", marginBottom: "8px" }}>Удалить бота «{bot?.name}»?</div>
+            <div style={{ color: "#8B92B8", fontSize: "0.88rem", marginBottom: "24px" }}>Сценарий, настройки и все лиды будут удалены. Это действие нельзя отменить.</div>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button onClick={() => setConfirmDelete(false)} disabled={deleting}
+                style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1.5px solid #E0E4F0", background: "#F4F6FF", color: "#4A5280", fontWeight: 600, fontSize: "0.88rem", cursor: "pointer" }}>
+                Отмена
+              </button>
+              <button
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    await api.deleteBot(botId);
+                    onBack();
+                  } finally {
+                    setDeleting(false);
+                    setConfirmDelete(false);
+                  }
+                }}
+                style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: deleting ? "#E0E4F0" : "#d63031", color: "#fff", fontWeight: 700, fontSize: "0.88rem", cursor: deleting ? "default" : "pointer" }}>
+                {deleting ? "Удаляю..." : "Удалить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Подтверждение очистки холста */}
       {confirmClear && (
