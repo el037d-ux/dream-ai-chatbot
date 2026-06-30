@@ -9,19 +9,42 @@ type Screen = "landing" | "auth" | "dashboard" | "builder";
 interface User { id: number; email: string; name: string; }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("landing");
+  const [screen, setScreenState] = useState<Screen>(
+    () => (localStorage.getItem("bf_screen") as Screen) || "landing"
+  );
   const [user, setUser] = useState<User | null>(null);
-  const [botId, setBotId] = useState<number | null>(null);
+  const [botId, setBotIdState] = useState<number | null>(() => {
+    const v = localStorage.getItem("bf_bot_id");
+    return v ? Number(v) : null;
+  });
   const [checking, setChecking] = useState(true);
+
+  const setScreen = (s: Screen) => {
+    localStorage.setItem("bf_screen", s);
+    setScreenState(s);
+  };
+  const setBotId = (id: number | null) => {
+    if (id == null) localStorage.removeItem("bf_bot_id");
+    else localStorage.setItem("bf_bot_id", String(id));
+    setBotIdState(id);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("bf_token");
-    if (!token) { setChecking(false); return; }
+    const savedScreen = localStorage.getItem("bf_screen") as Screen | null;
+    if (!token) {
+      if (savedScreen && savedScreen !== "landing" && savedScreen !== "auth") setScreen("landing");
+      setChecking(false);
+      return;
+    }
     api.me().then((d) => {
       setUser(d.user);
-      setScreen("dashboard");
+      if (!savedScreen || savedScreen === "landing" || savedScreen === "auth") {
+        setScreen("dashboard");
+      }
     }).catch(() => {
       localStorage.removeItem("bf_token");
+      setScreen("landing");
     }).finally(() => setChecking(false));
   }, []);
 
@@ -32,6 +55,7 @@ export default function App() {
 
   const onLogout = () => {
     setUser(null);
+    setBotId(null);
     setScreen("landing");
   };
 
