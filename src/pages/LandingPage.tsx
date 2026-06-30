@@ -322,14 +322,6 @@ export default function LandingPage({ onRegister }: Props) {
                 alt="Конструктор чат-ботов для ВКонтакте"
                 className="lp-hero-img"
               />
-              <div className="lp-float lp-float-1">
-                <div className="lp-float-icon">✓</div>
-                <div className="lp-float-txt"><strong>+127 диалогов</strong><span>за последний час</span></div>
-              </div>
-              <div className="lp-float lp-float-2">
-                <div className="lp-float-icon">⚡</div>
-                <div className="lp-float-txt"><strong>Ответ за 0.3с</strong><span>средняя скорость</span></div>
-              </div>
             </div>
           </div>
         </div>
