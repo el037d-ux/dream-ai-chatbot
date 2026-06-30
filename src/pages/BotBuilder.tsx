@@ -571,8 +571,8 @@ interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; special
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
-  nodes: Node[]; edges: Edge[]; botName: string; botId: number; onClose: () => void;
+function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
+  nodes: Node[]; edges: Edge[]; botName: string; botId: number; prompt: Prompt; onClose: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -584,6 +584,9 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
   const [collectedName, setCollectedName] = useState("");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [leadsCount, setLeadsCount] = useState(0);
+  // AI-режим: когда бот находится на AI-узле, все сообщения идут в GPT
+  const [aiMode, setAiMode] = useState(false);
+  const [aiError, setAiError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const startNode = nodes.find((n) => n.type === "trigger");
@@ -599,6 +602,8 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
     setAwaitingEmailNode(null);
     setCollectedName("");
     setVars({});
+    setAiMode(false);
+    setAiError("");
     if (startNode) {
       setTimeout(() => {
         addBotMsg(startNode.message || "Привет! Чем могу помочь?", startNode.id);
@@ -636,6 +641,42 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
     }
     const match = nodes.find((n) => n.type !== "trigger" && n.label.toLowerCase().split(/[,;]/).some((kw) => text.includes(kw.trim())));
     return match ?? null;
+  };
+
+  // Перевести историю сообщений в формат OpenAI
+  const toOpenAIHistory = (msgs: ChatMsg[]) =>
+    msgs.filter((m) => m.from === "user" || m.from === "bot").map((m) => ({
+      role: m.from === "user" ? "user" : "assistant",
+      content: m.text,
+    }));
+
+  // Отправить сообщение в GPT и получить ответ
+  const askGPT = async (userText: string, currentMsgs: ChatMsg[]) => {
+    const history = toOpenAIHistory(currentMsgs);
+    history.push({ role: "user", content: userText });
+    try {
+      const res = await api.askAI(history, prompt as object);
+      setThinking(false);
+      setAiError("");
+      addBotMsg(res.reply);
+    } catch (e: unknown) {
+      setThinking(false);
+      const msg = e instanceof Error ? e.message : "Ошибка AI";
+      setAiError(msg);
+      addBotMsg("Не удалось получить ответ от AI. Попробуй ещё раз.");
+    }
+  };
+
+  // Активируем AI-режим при попадании на узел 🤖
+  const handleAINode = (aiNode: Node, currentMsgs: ChatMsg[]) => {
+    setCurrentNodeId(aiNode.id);
+    setAiMode(true);
+    // Если у узла есть начальное сообщение — показываем его, иначе сразу ждём пользователя
+    if (aiNode.message) {
+      addBotMsg(aiNode.message, aiNode.id);
+    }
+    setThinking(false);
+    // После AI-узла могут быть следующие узлы — но они сработают только после явного выхода
   };
 
   // Обработка узла email — запускаем сбор данных
@@ -686,12 +727,19 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
     if (!input.trim()) return;
     const userText = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { from: "user", text: userText }]);
+    const newMsgs: ChatMsg[] = [...messages, { from: "user", text: userText }];
+    setMessages(newMsgs);
     setThinking(true);
 
     // Если ожидаем email — обрабатываем как email
     if (awaitingEmail) {
       setTimeout(() => handleEmailInput(userText), 500);
+      return;
+    }
+
+    // Если AI-режим активен — всё идёт в GPT
+    if (aiMode) {
+      askGPT(userText, messages);
       return;
     }
 
@@ -704,16 +752,15 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
       setThinking(false);
       const next = findMatchingNode(userText, currentNodeId);
       if (next) {
-        if (next.type === "email") {
-          handleEmailNode(next);
-          return;
-        }
+        if (next.type === "email") { handleEmailNode(next); return; }
+        if (next.type === "ai") { handleAINode(next, newMsgs); return; }
         addBotMsg(next.message || `[${next.label}]`, next.id);
         setCurrentNodeId(next.id);
         const afterNext = getNextNode(next.id);
         if (afterNext && afterNext.type !== "trigger" && afterNext.type !== "condition") {
           setTimeout(() => {
             if (afterNext.type === "email") { handleEmailNode(afterNext); return; }
+            if (afterNext.type === "ai") { handleAINode(afterNext, newMsgs); return; }
             addBotMsg(afterNext.message || `[${afterNext.label}]`, afterNext.id);
             setCurrentNodeId(afterNext.id);
           }, 600);
@@ -742,6 +789,17 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "1rem" }}>✕</button>
       </div>
 
+      {/* AI mode banner */}
+      {aiMode && !awaitingEmail && (
+        <div style={{ padding: "8px 14px", background: "linear-gradient(90deg,rgba(255,107,107,0.08),rgba(123,97,255,0.08))", borderBottom: "1px solid rgba(255,107,107,0.2)", fontSize: "0.75rem", color: "#FF6B6B", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", justifyContent: "space-between" }}>
+          <span>🤖 AI-режим активен · GPT отвечает на все сообщения</span>
+          <button onClick={() => setAiMode(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.7rem", color: "#8B92B8", padding: "0" }}>Выйти</button>
+        </div>
+      )}
+      {aiError && (
+        <div style={{ padding: "6px 14px", background: "#fff0f0", fontSize: "0.72rem", color: "#d63031" }}>⚠ {aiError}</div>
+      )}
+
       {/* Email mode banner */}
       {awaitingEmail && (
         <div style={{ padding: "8px 14px", background: "rgba(224,64,251,0.08)", borderBottom: "1px solid rgba(224,64,251,0.2)", fontSize: "0.75rem", color: "#C026D3", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
@@ -761,8 +819,9 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
         {messages.map((msg, i) => (
           <div key={i} style={{ display: "flex", flexDirection: msg.from === "user" ? "row-reverse" : "row", gap: "8px", alignItems: "flex-end" }}>
             {msg.from === "bot" && (
-              <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: msg.special === "email_saved" ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", flexShrink: 0 }}>
-                {msg.special === "email_saved" ? "📧" : "🤖"}
+              <div style={{ width: "26px", height: "26px", borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem",
+                background: msg.special === "email_saved" ? "linear-gradient(135deg,#E040FB,#7B61FF)" : aiMode ? "linear-gradient(135deg,#FF6B6B,#7B61FF)" : "linear-gradient(135deg,#00D4AA,#0077FF)" }}>
+                {msg.special === "email_saved" ? "📧" : aiMode ? "✨" : "🤖"}
               </div>
             )}
             <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", gap: "3px", alignItems: msg.from === "user" ? "flex-end" : "flex-start" }}>
@@ -830,19 +889,37 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
       {/* Input */}
       <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px" }}>
         <input
-          style={{ flex: 1, padding: "9px 13px", border: `1.5px solid ${awaitingEmail ? "#E040FB" : "#E0E4F0"}`, borderRadius: "22px", fontSize: "0.88rem", outline: "none", color: "#0A0E27", background: awaitingEmail ? "rgba(224,64,251,0.04)" : "#F8F9FF", transition: "border 0.2s" }}
-          placeholder={awaitingEmail ? "Введите email (например: ivan@mail.ru)" : "Написать сообщение..."}
+          style={{
+            flex: 1, padding: "9px 13px", borderRadius: "22px", fontSize: "0.88rem",
+            outline: "none", color: "#0A0E27", transition: "border 0.2s",
+            border: `1.5px solid ${awaitingEmail ? "#E040FB" : aiMode ? "#FF6B6B" : "#E0E4F0"}`,
+            background: awaitingEmail ? "rgba(224,64,251,0.04)" : aiMode ? "rgba(255,107,107,0.03)" : "#F8F9FF",
+          }}
+          placeholder={
+            awaitingEmail ? "Введите email (например: ivan@mail.ru)" :
+            aiMode ? "Спросите что угодно — отвечает GPT..." :
+            "Написать сообщение..."
+          }
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          disabled={noNodes}
+          disabled={noNodes || thinking}
           type={awaitingEmail ? "email" : "text"}
         />
         <button
           onClick={sendMessage}
-          disabled={!input.trim() || noNodes}
-          style={{ width: "38px", height: "38px", borderRadius: "50%", background: input.trim() ? (awaitingEmail ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "linear-gradient(135deg,#0077FF,#7B61FF)") : "#E0E4F0", border: "none", cursor: input.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, transition: "background 0.2s" }}>
-          {awaitingEmail ? "📧" : "➤"}
+          disabled={!input.trim() || noNodes || thinking}
+          style={{
+            width: "38px", height: "38px", borderRadius: "50%", border: "none",
+            cursor: input.trim() && !thinking ? "pointer" : "default",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "1rem", flexShrink: 0, transition: "background 0.2s",
+            background: !input.trim() || thinking ? "#E0E4F0" :
+              awaitingEmail ? "linear-gradient(135deg,#E040FB,#7B61FF)" :
+              aiMode ? "linear-gradient(135deg,#FF6B6B,#7B61FF)" :
+              "linear-gradient(135deg,#0077FF,#7B61FF)",
+          }}>
+          {awaitingEmail ? "📧" : aiMode ? "✨" : "➤"}
         </button>
       </div>
       <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
@@ -1065,6 +1142,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
             edges={edges}
             botName={bot?.name ?? "Бот"}
             botId={botId}
+            prompt={prompt}
             onClose={() => setRightPanel(null)}
           />
         )}

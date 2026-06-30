@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "No messages returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"messages": [], "prompt": {}},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
