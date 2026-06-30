@@ -96,7 +96,7 @@ def handler(event: dict, context) -> dict:
             return err("Бот не найден", 404)
         cur.execute("""SELECT node_id, type, label, message, pos_x, pos_y,
             COALESCE(var_name,''), COALESCE(validate,false), COALESCE(error_msg,''), COALESCE(extra,'{}')
-            FROM bot_nodes WHERE bot_id=%s""", (bot_id,))
+            FROM bot_nodes WHERE bot_id=%s AND type NOT IN ('__del__', 'deleted')""", (bot_id,))
         nodes = []
         for n in cur.fetchall():
             extra = n[9] if isinstance(n[9], dict) else {}
@@ -108,7 +108,7 @@ def handler(event: dict, context) -> dict:
                 "webhookSecret": extra.get("webhookSecret", ""),
                 "buttons": extra.get("buttons", []),
             })
-        cur.execute("SELECT edge_id, source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s", (bot_id,))
+        cur.execute("SELECT edge_id, source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s AND source_node_id != '__del__'", (bot_id,))
         edges = [{"id": e[0], "source": e[1], "target": e[2]} for e in cur.fetchall()]
         conn.close()
         return ok({"bot": {
@@ -134,9 +134,14 @@ def handler(event: dict, context) -> dict:
         nodes = body.get("nodes", [])
         edges = body.get("edges", [])
         prompt = body.get("prompt", {})
-        # Сначала обновляем все существующие с маркером, потом вставляем новые
-        cur.execute("UPDATE bot_nodes SET type='__del__' WHERE bot_id=%s", (bot_id,))
-        cur.execute("UPDATE bot_edges SET source_node_id='__del__' WHERE bot_id=%s", (bot_id,))
+        # Полная замена: получаем текущие id, удаляем лишние, вставляем/обновляем актуальные
+        cur.execute("SELECT node_id FROM bot_nodes WHERE bot_id=%s", (bot_id,))
+        existing_node_ids = {row[0] for row in cur.fetchall()}
+        new_node_ids = {n["id"] for n in nodes}
+        # Удаляем узлы которых нет в новом списке
+        for nid in existing_node_ids - new_node_ids:
+            cur.execute("UPDATE bot_nodes SET type='__del__', label='__del__' WHERE bot_id=%s AND node_id=%s", (bot_id, nid))
+        # Вставляем/обновляем актуальные узлы
         for n in nodes:
             extra = {}
             if n.get("webhookUrl"): extra["webhookUrl"] = n["webhookUrl"]
@@ -155,6 +160,12 @@ def handler(event: dict, context) -> dict:
                 n.get("varName",""), bool(n.get("validate", True)), n.get("errorMsg",""),
                 json.dumps(extra)
             ))
+        # Рёбра: удаляем лишние, вставляем актуальные
+        cur.execute("SELECT edge_id FROM bot_edges WHERE bot_id=%s", (bot_id,))
+        existing_edge_ids = {row[0] for row in cur.fetchall()}
+        new_edge_ids = {e["id"] for e in edges}
+        for eid in existing_edge_ids - new_edge_ids:
+            cur.execute("UPDATE bot_edges SET source_node_id='__del__' WHERE bot_id=%s AND edge_id=%s", (bot_id, eid))
         for e in edges:
             cur.execute("""INSERT INTO bot_edges (bot_id, edge_id, source_node_id, target_node_id)
                 VALUES (%s,%s,%s,%s) ON CONFLICT (bot_id, edge_id) DO UPDATE SET
