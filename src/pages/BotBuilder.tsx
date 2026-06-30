@@ -46,13 +46,16 @@ interface BotInfo {
 const NODE_TYPES = [
   { type: "trigger",   label: "Триггер",    icon: "💬", color: "#00D4AA", bg: "rgba(0,212,170,0.1)" },
   { type: "message",   label: "Сообщение",  icon: "📤", color: "#0077FF", bg: "rgba(0,119,255,0.1)" },
-  { type: "email",     label: "Сбор email", icon: "📧", color: "#E040FB", bg: "rgba(224,64,251,0.1)" },
   { type: "condition", label: "Условие",    icon: "🔀", color: "#FFB800", bg: "rgba(255,184,0,0.1)" },
   { type: "action",    label: "Действие",   icon: "⚡", color: "#7B61FF", bg: "rgba(123,97,255,0.1)" },
   { type: "ai",        label: "AI-ответ",   icon: "🤖", color: "#FF6B6B", bg: "rgba(255,107,107,0.1)" },
 ] as const;
 
+// email остаётся как тип данных для обратной совместимости, но не отображается в палитре
+const EMAIL_NODE_STYLE = { type: "email", label: "Сбор email", icon: "📧", color: "#E040FB", bg: "rgba(224,64,251,0.1)" };
+
 function getNodeStyle(type: Node["type"]) {
+  if (type === "email") return EMAIL_NODE_STYLE;
   return NODE_TYPES.find((t) => t.type === type) ?? NODE_TYPES[1];
 }
 
@@ -182,16 +185,26 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
   const [webhookSecret, setWebhookSecret] = useState(node.webhookSecret || "");
   const [buttons, setButtons] = useState<string[]>(node.buttons || []);
   const [newBtn, setNewBtn] = useState("");
+  // Для action-узла: подтип действия — webhook или email
+  const [actionSubtype, setActionSubtype] = useState<"webhook" | "email">(
+    node.type === "email" ? "email" : "webhook"
+  );
 
   useEffect(() => {
-    setLabel(node.label); setMessage(node.message); setType(node.type);
+    setLabel(node.label); setMessage(node.message);
+    const t = node.type;
+    // email-узлы отображаются как action с подтипом email
+    setType(t === "email" ? "action" : t);
+    setActionSubtype(t === "email" ? "email" : "webhook");
     setVarName(node.varName || ""); setValidate(node.validate ?? true);
     setErrorMsg(node.errorMsg || ""); setWebhookUrl(node.webhookUrl || "");
     setWebhookMethod(node.webhookMethod || "POST"); setWebhookSecret(node.webhookSecret || "");
     setButtons(node.buttons || []); setNewBtn("");
   }, [node.id]);
 
-  const nStyle = getNodeStyle(type);
+  // Реальный тип для сохранения: action с подтипом email → тип "email"
+  const effectiveType: Node["type"] = type === "action" && actionSubtype === "email" ? "email" : type;
+  const nStyle = getNodeStyle(effectiveType);
 
   const addBtn = () => {
     const t = newBtn.trim();
@@ -200,7 +213,7 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
     setNewBtn("");
   };
 
-  const save = () => onSave({ ...node, label, message, type, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret, buttons });
+  const save = () => onSave({ ...node, label, message, type: effectiveType, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret, buttons });
 
   return (
     <div style={{ ...p.panel, width: "320px" }}>
@@ -222,64 +235,79 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
         <Field label="Название">
           <input style={p.input} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Название узла" />
         </Field>
-        <Field label={type === "email" ? "Текст вопроса (что спросить)" : "Текст сообщения"}>
+        <Field label={effectiveType === "email" ? "Текст вопроса (что спросить)" : "Текст сообщения"}>
           <textarea style={p.textarea} value={message} onChange={(e) => setMessage(e.target.value)}
-            placeholder={type === "email" ? "Например: Введите ваш email для получения скидки" : "Введите текст ответа бота..."} rows={4} />
+            placeholder={effectiveType === "email" ? "Например: Введите ваш email для получения скидки" : "Введите текст ответа бота..."} rows={4} />
         </Field>
 
-        {/* EMAIL узел — поля сбора данных */}
-        {type === "email" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(224,64,251,0.04)", border: "1.5px solid rgba(224,64,251,0.18)", borderRadius: "12px", padding: "12px" }}>
-            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#C026D3", display: "flex", alignItems: "center", gap: "6px" }}>📧 Настройки сбора данных</div>
-            <Field label="Имя переменной (куда сохранить)">
-              <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
-                <span style={{ padding: "9px 10px", background: "#F0F2F8", border: "1.5px solid #E0E4F0", borderRight: "none", borderRadius: "9px 0 0 9px", fontSize: "0.85rem", color: "#8B92B8", flexShrink: 0 }}>$</span>
-                <input style={{ ...p.input, borderRadius: "0 9px 9px 0", flex: 1 }} value={varName}
-                  onChange={(e) => setVarName(e.target.value.replace(/[^a-z0-9_]/gi, "_").toLowerCase())}
-                  placeholder="user_email" />
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "#8B92B8", marginTop: "3px" }}>Только латиница, цифры и _</div>
-            </Field>
-            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-              <input type="checkbox" checked={validate} onChange={(e) => setValidate(e.target.checked)}
-                style={{ width: "16px", height: "16px", accentColor: "#C026D3" }} />
-              <div>
-                <div style={{ fontSize: "0.83rem", fontWeight: 600, color: "#0A0E27" }}>Включить валидацию</div>
-                <div style={{ fontSize: "0.72rem", color: "#8B92B8" }}>Проверять корректность формата email</div>
-              </div>
-            </label>
-            {validate && (
-              <Field label="Сообщение об ошибке">
-                <input style={p.input} value={errorMsg}
-                  onChange={(e) => setErrorMsg(e.target.value)}
-                  placeholder="Это не похоже на email. Попробуйте ещё раз" />
-              </Field>
-            )}
-          </div>
-        )}
-
-        {/* ACTION узел — webhook */}
+        {/* ACTION узел — переключатель подтипа + настройки */}
         {type === "action" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(123,97,255,0.04)", border: "1.5px solid rgba(123,97,255,0.18)", borderRadius: "12px", padding: "12px" }}>
-            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7B61FF", display: "flex", alignItems: "center", gap: "6px" }}>⚡ Webhook-интеграция</div>
-            <Field label="URL для отправки данных">
-              <input style={p.input} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
-                placeholder="https://your-service.com/webhook" type="url" />
-            </Field>
-            <Field label="HTTP метод">
-              <select style={p.select} value={webhookMethod} onChange={(e) => setWebhookMethod(e.target.value)}>
-                <option value="POST">POST</option>
-                <option value="GET">GET</option>
-                <option value="PUT">PUT</option>
-              </select>
-            </Field>
-            <Field label="Секретный ключ (необязательно)">
-              <input style={p.input} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder="Для подписи запроса" type="password" />
-            </Field>
-            <div style={{ background: "#F8F9FF", borderRadius: "9px", padding: "9px 11px", fontSize: "0.73rem", color: "#8B92B8", lineHeight: 1.5 }}>
-              При достижении этого узла бот отправит собранные данные (email, имя) на указанный URL в формате JSON.
+            {/* Переключатель подтипа */}
+            <div style={{ display: "flex", gap: "6px" }}>
+              {([
+                { key: "webhook", icon: "⚡", label: "Webhook" },
+                { key: "email",   icon: "📧", label: "Сбор email" },
+              ] as const).map((opt) => (
+                <button key={opt.key} onClick={() => setActionSubtype(opt.key)}
+                  style={{ flex: 1, padding: "8px", borderRadius: "9px", border: `1.5px solid ${actionSubtype === opt.key ? "#7B61FF" : "#E0E4F0"}`, background: actionSubtype === opt.key ? "rgba(123,97,255,0.1)" : "#fff", color: actionSubtype === opt.key ? "#7B61FF" : "#8B92B8", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}>
+                  {opt.icon} {opt.label}
+                </button>
+              ))}
             </div>
+
+            {/* Webhook */}
+            {actionSubtype === "webhook" && (<>
+              <Field label="URL для отправки данных">
+                <input style={p.input} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://your-service.com/webhook" type="url" />
+              </Field>
+              <Field label="HTTP метод">
+                <select style={p.select} value={webhookMethod} onChange={(e) => setWebhookMethod(e.target.value)}>
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                  <option value="PUT">PUT</option>
+                </select>
+              </Field>
+              <Field label="Секретный ключ (необязательно)">
+                <input style={p.input} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="Для подписи запроса" type="password" />
+              </Field>
+              <div style={{ background: "#F8F9FF", borderRadius: "9px", padding: "9px 11px", fontSize: "0.73rem", color: "#8B92B8", lineHeight: 1.5 }}>
+                При достижении этого узла бот отправит собранные данные на указанный URL в формате JSON.
+              </div>
+            </>)}
+
+            {/* Email сбор */}
+            {actionSubtype === "email" && (<>
+              <Field label="Имя переменной (куда сохранить)">
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <span style={{ padding: "9px 10px", background: "#F0F2F8", border: "1.5px solid #E0E4F0", borderRight: "none", borderRadius: "9px 0 0 9px", fontSize: "0.85rem", color: "#8B92B8", flexShrink: 0 }}>$</span>
+                  <input style={{ ...p.input, borderRadius: "0 9px 9px 0", flex: 1 }} value={varName}
+                    onChange={(e) => setVarName(e.target.value.replace(/[^a-z0-9_]/gi, "_").toLowerCase())}
+                    placeholder="user_email" />
+                </div>
+                <div style={{ fontSize: "0.7rem", color: "#8B92B8", marginTop: "3px" }}>Только латиница, цифры и _</div>
+              </Field>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                <input type="checkbox" checked={validate} onChange={(e) => setValidate(e.target.checked)}
+                  style={{ width: "16px", height: "16px", accentColor: "#7B61FF" }} />
+                <div>
+                  <div style={{ fontSize: "0.83rem", fontWeight: 600, color: "#0A0E27" }}>Включить валидацию</div>
+                  <div style={{ fontSize: "0.72rem", color: "#8B92B8" }}>Проверять корректность формата email</div>
+                </div>
+              </label>
+              {validate && (
+                <Field label="Сообщение об ошибке">
+                  <input style={p.input} value={errorMsg}
+                    onChange={(e) => setErrorMsg(e.target.value)}
+                    placeholder="Это не похоже на email. Попробуйте ещё раз" />
+                </Field>
+              )}
+              <div style={{ background: "#F8F9FF", borderRadius: "9px", padding: "9px 11px", fontSize: "0.73rem", color: "#8B92B8", lineHeight: 1.5 }}>
+                Бот запросит email у пользователя и сохранит его в базу лидов.
+              </div>
+            </>)}
           </div>
         )}
 
@@ -291,8 +319,8 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
           </div>
         )}
 
-        {/* КНОПКИ — для trigger / message / email узлов */}
-        {(type === "trigger" || type === "message" || type === "email") && (
+        {/* КНОПКИ — для trigger / message узлов */}
+        {(type === "trigger" || type === "message") && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "rgba(0,119,255,0.04)", border: "1.5px solid rgba(0,119,255,0.15)", borderRadius: "12px", padding: "12px" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0077FF", display: "flex", alignItems: "center", gap: "6px" }}>
               💙 Кнопки ВКонтакте
