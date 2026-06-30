@@ -116,9 +116,11 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    api_key = os.environ.get("GROQ_API_KEY", "")
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key:
         return err("GROQ_API_KEY не настроен", 500)
+    if not api_key.startswith("gsk_"):
+        return err(f"GROQ_API_KEY неверный формат (ожидается gsk_...), получено: {api_key[:8]!r}", 500)
 
     body = json.loads(event.get("body") or "{}")
     user_msg = (body.get("message") or "").strip()
