@@ -1306,6 +1306,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1415,7 +1416,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
         {/* Clear canvas */}
         {nodes.length > 0 && (
           <button
-            onClick={() => { if (confirm("Очистить холст? Все узлы и связи будут удалены.")) { setNodes([]); setEdges([]); setSelected(null); setEditNode(null); setRightPanel(null); } }}
+            onClick={() => setConfirmClear(true)}
             style={{ background: "#fff0f0", border: "1px solid #ffd0d0", borderRadius: "8px", padding: "5px 10px", fontSize: "0.75rem", fontWeight: 600, color: "#d63031", cursor: "pointer" }}
             title="Очистить холст">
             🗑 Очистить
@@ -1545,6 +1546,29 @@ export default function BotBuilder({ botId, onBack }: Props) {
           setRightPanel("prompt");
         }}
       />
+
+      {/* Подтверждение очистки холста */}
+      {confirmClear && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setConfirmClear(false)}>
+          <div style={{ background: "#fff", borderRadius: "18px", padding: "28px 32px", maxWidth: "360px", width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: "2.2rem", marginBottom: "12px" }}>🗑</div>
+            <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "1.05rem", marginBottom: "8px" }}>Очистить холст?</div>
+            <div style={{ color: "#8B92B8", fontSize: "0.88rem", marginBottom: "24px" }}>Все узлы и связи будут удалены. Это действие нельзя отменить.</div>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button onClick={() => setConfirmClear(false)}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #E0E4F0", background: "#F4F6FF", color: "#4A5280", fontWeight: 600, fontSize: "0.88rem", cursor: "pointer" }}>
+                Отмена
+              </button>
+              <button onClick={() => { setNodes([]); setEdges([]); setSelected(null); setEditNode(null); setRightPanel(null); setConfirmClear(false); }}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "none", background: "#d63031", color: "#fff", fontWeight: 700, fontSize: "0.88rem", cursor: "pointer" }}>
+                Очистить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
