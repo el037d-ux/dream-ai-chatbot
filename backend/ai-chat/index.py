@@ -1,8 +1,5 @@
-"""AI-чат: отправляет историю диалога + системный промпт в OpenAI, возвращает ответ."""
-import json
-import os
-import urllib.request
-import urllib.error
+"""AI-чат: отправляет историю диалога + системный промпт в Groq, возвращает ответ."""
+import json, os, urllib.request, urllib.error
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -10,11 +7,13 @@ CORS = {
     "Access-Control-Allow-Headers": "Content-Type, X-Auth-Token",
 }
 
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
+
 def ok(data): return {"statusCode": 200, "headers": CORS, "body": json.dumps(data, ensure_ascii=False)}
 def err(msg, code=400): return {"statusCode": code, "headers": CORS, "body": json.dumps({"error": msg})}
 
 def build_system_prompt(prompt: dict) -> str:
-    """Собирает системный промпт из всех полей настройки бота."""
     p = prompt
     parts = []
 
@@ -65,7 +64,6 @@ def build_system_prompt(prompt: dict) -> str:
     if examples:
         parts.append(f"# ПРИМЕРЫ ДИАЛОГОВ\n{examples}")
 
-    # Legacy поля (обратная совместимость)
     if p.get("persona"): parts.append(f"# Роль\n{p['persona']}")
     if p.get("context"): parts.append(f"# Контекст\n{p['context']}")
     if p.get("instructions"): parts.append(f"# Инструкции\n{p['instructions']}")
@@ -73,58 +71,55 @@ def build_system_prompt(prompt: dict) -> str:
     return "\n\n".join(parts) if parts else "Ты — полезный ассистент. Отвечай на русском языке."
 
 
+def call_groq(messages: list, api_key: str, model: str, max_tokens: int) -> dict:
+    payload = json.dumps({
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        GROQ_URL, data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    api_key = os.environ.get("OPENAI_API_KEY", "")
+    api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
-        return err("OPENAI_API_KEY не настроен", 500)
+        return err("GROQ_API_KEY не настроен", 500)
 
     body = json.loads(event.get("body") or "{}")
-    messages_in = body.get("messages", [])   # [{role, content}]
-    prompt_cfg = body.get("prompt", {})       # настройки бота (Prompt interface)
-    model = body.get("model", "gpt-4o-mini")
+    messages_in = body.get("messages", [])
+    prompt_cfg = body.get("prompt", {})
+    model = body.get("model", DEFAULT_MODEL)
     max_tokens = int(body.get("max_tokens", 500))
 
     if not messages_in:
         return err("Нет сообщений")
 
     system_prompt = build_system_prompt(prompt_cfg)
-
-    openai_messages = [{"role": "system", "content": system_prompt}] + [
+    groq_messages = [{"role": "system", "content": system_prompt}] + [
         {"role": m["role"], "content": m["content"]}
         for m in messages_in
         if m.get("role") in ("user", "assistant") and m.get("content")
     ]
 
-    payload = json.dumps({
-        "model": model,
-        "messages": openai_messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.7,
-    }).encode("utf-8")
-
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        data = call_groq(groq_messages, api_key, model, max_tokens)
         reply = data["choices"][0]["message"]["content"].strip()
         usage = data.get("usage", {})
         return ok({"reply": reply, "usage": usage, "model": model})
     except urllib.error.HTTPError as e:
         body_err = e.read().decode("utf-8", errors="replace")
         err_data = json.loads(body_err) if body_err.startswith("{") else {}
-        msg = err_data.get("error", {}).get("message", f"OpenAI HTTP {e.code}")
-        return err(f"OpenAI: {msg}", 502)
+        msg = err_data.get("error", {}).get("message", f"Groq HTTP {e.code}")
+        return err(f"Groq: {msg}", 502)
     except Exception as ex:
         return err(f"Ошибка: {str(ex)}", 500)
