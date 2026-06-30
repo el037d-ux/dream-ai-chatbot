@@ -112,6 +112,7 @@ export default function LandingPage({ onRegister }: Props) {
 
         /* MOCKUP */
         .lp-visual{position:relative}
+        .lp-hero-img{width:100%;border-radius:20px;box-shadow:0 40px 80px rgba(10,14,39,.15),0 0 0 1px rgba(0,0,0,.05);display:block;object-fit:cover}
         .lp-mockup{background:#fff;border-radius:20px;box-shadow:0 40px 80px rgba(10,14,39,.15),0 0 0 1px rgba(0,0,0,.05);overflow:hidden}
         .lp-mock-hdr{background:var(--g1);padding:12px 20px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(0,0,0,.05)}
         .lp-dot{width:12px;height:12px;border-radius:50%;background:#FF5F57}
@@ -316,22 +317,11 @@ export default function LandingPage({ onRegister }: Props) {
               </div>
             </div>
             <div className="lp-visual">
-              <div className="lp-mockup">
-                <div className="lp-mock-hdr">
-                  <div className="lp-dot"/><div className="lp-dot"/><div className="lp-dot"/>
-                </div>
-                <div className="lp-mock-body">
-                  <svg className="lp-svg-lines" width="100%" height="100%">
-                    <path d="M80 65 Q150 95 215 140" stroke="#0077FF" strokeWidth="2" fill="none" strokeDasharray="6 4"/>
-                    <path d="M255 180 Q175 215 125 250" stroke="#0077FF" strokeWidth="2" fill="none" strokeDasharray="6 4"/>
-                    <path d="M175 290 Q235 300 285 325" stroke="#0077FF" strokeWidth="2" fill="none" strokeDasharray="6 4"/>
-                  </svg>
-                  <div className="lp-node n1"><div className="lp-node-icon">💬</div>Сообщение</div>
-                  <div className="lp-node n2"><div className="lp-node-icon">🔀</div>Условие</div>
-                  <div className="lp-node n3"><div className="lp-node-icon">📤</div>Отправить</div>
-                  <div className="lp-node n4"><div className="lp-node-icon">🤖</div>AI-ответ</div>
-                </div>
-              </div>
+              <img
+                src="https://cdn.poehali.dev/projects/ef9ccef5-4bd7-4fe3-81e1-400d70465a9f/bucket/ee29efca-c219-44b8-b79f-d4ec6f440890.png"
+                alt="Конструктор чат-ботов для ВКонтакте"
+                className="lp-hero-img"
+              />
               <div className="lp-float lp-float-1">
                 <div className="lp-float-icon">✓</div>
                 <div className="lp-float-txt"><strong>+127 диалогов</strong><span>за последний час</span></div>
