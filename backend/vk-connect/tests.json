@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Status without auth returns 401",
+      "method": "GET",
+      "path": "/?action=status&bot_id=1",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

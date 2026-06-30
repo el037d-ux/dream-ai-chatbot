@@ -3,6 +3,8 @@ const BOTS_URL = "https://functions.poehali.dev/3a31590d-66a8-4a32-8018-9180fb2e
 const LEADS_URL = "https://functions.poehali.dev/96aa177e-abc9-4ba3-ad48-bbf935357753";
 const AI_URL = "https://functions.poehali.dev/fa4308f7-059d-4404-aca1-10cfeb46e8ff";
 const AI_ASSISTANT_URL = "https://functions.poehali.dev/17e10c45-10e7-4ed3-af8e-8168e7fa6e23";
+const VK_CONNECT_URL = "https://functions.poehali.dev/f8b7cbf4-0be7-40e9-873e-54b9c2a9ba08";
+export const VK_BOT_URL = "https://functions.poehali.dev/bf37291d-9d5d-4ef1-a4d6-361dbf50b813";
 
 function getToken() {
   return localStorage.getItem("bf_token") || "";
@@ -53,4 +55,13 @@ export const api = {
 
   askAssistant: (message: string, history: { role: string; content: string }[], context: object) =>
     req(AI_ASSISTANT_URL, "POST", { message, history, context }),
+
+  vkStatus: (botId: number) =>
+    req(`${VK_CONNECT_URL}?action=status&bot_id=${botId}`, "GET", undefined, true),
+  vkConnect: (botId: number, accessToken: string, groupId: number, secretKey: string) =>
+    req(`${VK_CONNECT_URL}?action=connect`, "POST", { bot_id: botId, access_token: accessToken, group_id: groupId, secret_key: secretKey }, true),
+  vkToggle: (botId: number, active: boolean) =>
+    req(`${VK_CONNECT_URL}?action=toggle`, "POST", { bot_id: botId, active }, true),
+  vkDisconnect: (botId: number) =>
+    req(`${VK_CONNECT_URL}?action=disconnect`, "POST", { bot_id: botId }, true),
 };

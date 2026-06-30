@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Unknown group returns ok",
+      "method": "POST",
+      "path": "/",
+      "body": {"type": "message_new", "group_id": 0, "object": {}},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
