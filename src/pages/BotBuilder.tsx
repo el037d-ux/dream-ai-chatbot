@@ -1335,6 +1335,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1434,7 +1435,8 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const currentNode = editNode && nodes.find((n) => n.id === editNode.id) ? editNode : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#F4F6FF" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", background: "#F4F6FF" }}
+      onClick={() => paletteOpen && setPaletteOpen(false)}>
       {/* Top bar */}
       <div style={{ background: "#fff", borderBottom: "1px solid #E0E4F0", padding: "0 16px", height: "54px", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
         <button style={{ background: "none", border: "none", cursor: "pointer", color: "#4A5280", fontSize: "0.88rem", fontWeight: 600, padding: "6px 10px", borderRadius: "8px" }} onClick={onBack}>← Назад</button>
@@ -1448,14 +1450,31 @@ export default function BotBuilder({ botId, onBack }: Props) {
         </button>
         <div style={{ flex: 1 }} />
 
-        {/* Node palette */}
-        <div style={{ display: "flex", gap: "6px" }}>
-          {NODE_TYPES.map((t) => (
-            <button key={t.type} onClick={() => addNode(t.type as Node["type"])} title={`Добавить: ${t.label}`}
-              style={{ background: t.bg, border: `1px solid ${t.color}44`, borderRadius: "8px", padding: "5px 10px", fontSize: "0.75rem", fontWeight: 600, color: t.color, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
-              {t.icon} {t.label}
-            </button>
-          ))}
+        {/* Node palette dropdown */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setPaletteOpen((v) => !v)}
+            style={{ background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "9px", padding: "7px 14px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+            + Добавить блок
+            <span style={{ fontSize: "0.65rem", opacity: 0.8, transform: paletteOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+          </button>
+          {paletteOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#fff", borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.14)", border: "1px solid #E0E4F0", padding: "6px", zIndex: 500, minWidth: "180px" }}
+              onMouseLeave={() => setPaletteOpen(false)}>
+              {NODE_TYPES.map((t) => (
+                <button key={t.type}
+                  onClick={() => { addNode(t.type as Node["type"]); setPaletteOpen(false); }}
+                  style={{ width: "100%", background: "none", border: "none", borderRadius: "9px", padding: "9px 12px", fontSize: "0.85rem", fontWeight: 600, color: "#0A0E27", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = t.bg)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>
+                  <span style={{ width: "28px", height: "28px", borderRadius: "8px", background: t.bg, border: `1px solid ${t.color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", flexShrink: 0 }}>{t.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: t.color, fontSize: "0.83rem" }}>{t.label}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Clear canvas */}
