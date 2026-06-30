@@ -380,6 +380,14 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
           <div style={{ width: "28px", height: "28px", background: "rgba(255,107,107,0.12)", borderRadius: "7px", display: "flex", alignItems: "center", justifyContent: "center" }}>🤖</div>
           <span style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.92rem", flex: 1 }}>Настройка AI-промпта</span>
+          {totalFilled > 0 && (
+            <button
+              onClick={() => { if (confirm("Очистить все поля промпта?")) onChange({ botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "" }); }}
+              title="Очистить промпт"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", color: "#8B92B8", padding: "2px 6px", borderRadius: "6px" }}>
+              🗑
+            </button>
+          )}
         </div>
         {/* Progress */}
         <div style={{ display: "flex", gap: "4px" }}>
@@ -1204,24 +1212,35 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
 
       {/* Input */}
       <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px" }}>
-        <input
-          style={{
-            flex: 1, padding: "9px 13px", borderRadius: "22px", fontSize: "0.88rem",
-            outline: "none", color: "#0A0E27", transition: "border 0.2s",
-            border: `1.5px solid ${awaitingEmail ? "#E040FB" : aiMode ? "#FF6B6B" : "#E0E4F0"}`,
-            background: awaitingEmail ? "rgba(224,64,251,0.04)" : aiMode ? "rgba(255,107,107,0.03)" : "#F8F9FF",
-          }}
-          placeholder={
-            awaitingEmail ? "Введите email (например: ivan@mail.ru)" :
-            aiMode ? "Спросите что угодно — отвечает GPT..." :
-            "Написать сообщение..."
-          }
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          disabled={noNodes || thinking}
-          type={awaitingEmail ? "email" : "text"}
-        />
+        <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+          <input
+            style={{
+              width: "100%", padding: "9px 13px", paddingRight: input ? "32px" : "13px",
+              borderRadius: "22px", fontSize: "0.88rem",
+              outline: "none", color: "#0A0E27", transition: "border 0.2s", boxSizing: "border-box",
+              border: `1.5px solid ${awaitingEmail ? "#E040FB" : aiMode ? "#FF6B6B" : "#E0E4F0"}`,
+              background: awaitingEmail ? "rgba(224,64,251,0.04)" : aiMode ? "rgba(255,107,107,0.03)" : "#F8F9FF",
+            }}
+            placeholder={
+              awaitingEmail ? "Введите email (например: ivan@mail.ru)" :
+              aiMode ? "Спросите что угодно — отвечает GPT..." :
+              "Написать сообщение..."
+            }
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            disabled={noNodes || thinking}
+            type={awaitingEmail ? "email" : "text"}
+          />
+          {input && (
+            <button
+              onClick={() => setInput("")}
+              style={{ position: "absolute", right: "10px", background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "0.9rem", lineHeight: 1, padding: "2px" }}
+              title="Очистить">
+              ✕
+            </button>
+          )}
+        </div>
         <button
           onClick={sendMessage}
           disabled={!input.trim() || noNodes || thinking}
@@ -1364,6 +1383,16 @@ export default function BotBuilder({ botId, onBack }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Clear canvas */}
+        {nodes.length > 0 && (
+          <button
+            onClick={() => { if (confirm("Очистить холст? Все узлы и связи будут удалены.")) { setNodes([]); setEdges([]); setSelected(null); setEditNode(null); setRightPanel(null); } }}
+            style={{ background: "#fff0f0", border: "1px solid #ffd0d0", borderRadius: "8px", padding: "5px 10px", fontSize: "0.75rem", fontWeight: 600, color: "#d63031", cursor: "pointer" }}
+            title="Очистить холст">
+            🗑 Очистить
+          </button>
+        )}
 
         <div style={{ width: "1px", height: "24px", background: "#E0E4F0" }} />
 
