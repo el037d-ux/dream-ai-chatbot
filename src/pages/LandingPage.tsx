@@ -2,9 +2,10 @@ import { useEffect } from "react";
 
 interface Props {
   onRegister: () => void;
+  onLogin: () => void;
 }
 
-export default function LandingPage({ onRegister }: Props) {
+export default function LandingPage({ onRegister, onLogin }: Props) {
   useEffect(() => {
     const toggle = document.getElementById("pricingToggle");
     const toggleLabels = document.querySelectorAll<HTMLElement>(".toggle-label");
@@ -293,6 +294,7 @@ export default function LandingPage({ onRegister }: Props) {
             <li><a href="#faq">FAQ</a></li>
           </ul>
           <div style={{ display: "flex", gap: "12px" }}>
+            <button className="lp-btn lp-btn-outline" onClick={onLogin}>Войти</button>
             <button className="lp-btn lp-btn-primary" onClick={onRegister}>Начать бесплатно</button>
           </div>
         </div>

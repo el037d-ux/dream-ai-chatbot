@@ -57,5 +57,5 @@ export default function App() {
   if (screen === "auth") {
     return <AuthPage onAuth={onAuth} />;
   }
-  return <LandingPage onRegister={() => setScreen("auth")} />;
+  return <LandingPage onRegister={() => setScreen("auth")} onLogin={() => setScreen("auth")} />;
 }
