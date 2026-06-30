@@ -1,0 +1,19 @@
+ALTER TABLE bot_nodes
+  ADD COLUMN IF NOT EXISTS var_name VARCHAR(100) DEFAULT '',
+  ADD COLUMN IF NOT EXISTS validate BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS error_msg VARCHAR(500) DEFAULT '',
+  ADD COLUMN IF NOT EXISTS extra JSONB DEFAULT '{}';
+
+CREATE TABLE IF NOT EXISTS bot_webhooks (
+  id SERIAL PRIMARY KEY,
+  bot_id INTEGER NOT NULL REFERENCES bots(id),
+  name VARCHAR(200) NOT NULL DEFAULT 'Webhook',
+  url TEXT NOT NULL,
+  method VARCHAR(10) DEFAULT 'POST',
+  headers JSONB DEFAULT '{}',
+  secret VARCHAR(200) DEFAULT '',
+  events TEXT[] DEFAULT ARRAY['lead.created'],
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bot_webhooks_bot_id ON bot_webhooks(bot_id);

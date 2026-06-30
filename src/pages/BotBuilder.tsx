@@ -9,6 +9,14 @@ interface Node {
   message: string;
   x: number;
   y: number;
+  // Сбор данных (email / ввод)
+  varName?: string;
+  validate?: boolean;
+  errorMsg?: string;
+  // Webhook (action-узел)
+  webhookUrl?: string;
+  webhookMethod?: string;
+  webhookSecret?: string;
 }
 interface Edge { id: string; source: string; target: string; }
 interface Prompt {
@@ -164,21 +172,36 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
   const [label, setLabel] = useState(node.label);
   const [message, setMessage] = useState(node.message);
   const [type, setType] = useState(node.type);
+  const [varName, setVarName] = useState(node.varName || "");
+  const [validate, setValidate] = useState(node.validate ?? true);
+  const [errorMsg, setErrorMsg] = useState(node.errorMsg || "");
+  const [webhookUrl, setWebhookUrl] = useState(node.webhookUrl || "");
+  const [webhookMethod, setWebhookMethod] = useState(node.webhookMethod || "POST");
+  const [webhookSecret, setWebhookSecret] = useState(node.webhookSecret || "");
 
-  useEffect(() => { setLabel(node.label); setMessage(node.message); setType(node.type); }, [node.id]);
+  useEffect(() => {
+    setLabel(node.label); setMessage(node.message); setType(node.type);
+    setVarName(node.varName || ""); setValidate(node.validate ?? true);
+    setErrorMsg(node.errorMsg || ""); setWebhookUrl(node.webhookUrl || "");
+    setWebhookMethod(node.webhookMethod || "POST"); setWebhookSecret(node.webhookSecret || "");
+  }, [node.id]);
 
   const nStyle = getNodeStyle(type);
 
+  const save = () => onSave({ ...node, label, message, type, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret });
+
   return (
-    <div style={p.panel}>
+    <div style={{ ...p.panel, width: "320px" }}>
       <div style={{ ...p.panelHeader, borderBottom: `3px solid ${nStyle.color}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div style={{ width: "28px", height: "28px", background: nStyle.bg, borderRadius: "7px", display: "flex", alignItems: "center", justifyContent: "center" }}>{nStyle.icon}</div>
-          <span style={p.panelTitle}>Узел сценария</span>
+          <span style={p.panelTitle}>Настройка узла</span>
         </div>
         <button style={p.closeBtn} onClick={onClose}>✕</button>
       </div>
       <div style={p.panelBody}>
+
+        {/* Общие поля */}
         <Field label="Тип узла">
           <select style={p.select} value={type} onChange={(e) => setType(e.target.value as Node["type"])}>
             {NODE_TYPES.map((t) => <option key={t.type} value={t.type}>{t.icon} {t.label}</option>)}
@@ -187,12 +210,78 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
         <Field label="Название">
           <input style={p.input} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Название узла" />
         </Field>
-        <Field label="Текст сообщения">
-          <textarea style={p.textarea} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Введите текст ответа бота..." rows={5} />
+        <Field label={type === "email" ? "Текст вопроса (что спросить)" : "Текст сообщения"}>
+          <textarea style={p.textarea} value={message} onChange={(e) => setMessage(e.target.value)}
+            placeholder={type === "email" ? "Например: Введите ваш email для получения скидки" : "Введите текст ответа бота..."} rows={4} />
         </Field>
+
+        {/* EMAIL узел — поля сбора данных */}
+        {type === "email" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(224,64,251,0.04)", border: "1.5px solid rgba(224,64,251,0.18)", borderRadius: "12px", padding: "12px" }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#C026D3", display: "flex", alignItems: "center", gap: "6px" }}>📧 Настройки сбора данных</div>
+            <Field label="Имя переменной (куда сохранить)">
+              <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                <span style={{ padding: "9px 10px", background: "#F0F2F8", border: "1.5px solid #E0E4F0", borderRight: "none", borderRadius: "9px 0 0 9px", fontSize: "0.85rem", color: "#8B92B8", flexShrink: 0 }}>$</span>
+                <input style={{ ...p.input, borderRadius: "0 9px 9px 0", flex: 1 }} value={varName}
+                  onChange={(e) => setVarName(e.target.value.replace(/[^a-z0-9_]/gi, "_").toLowerCase())}
+                  placeholder="user_email" />
+              </div>
+              <div style={{ fontSize: "0.7rem", color: "#8B92B8", marginTop: "3px" }}>Только латиница, цифры и _</div>
+            </Field>
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+              <input type="checkbox" checked={validate} onChange={(e) => setValidate(e.target.checked)}
+                style={{ width: "16px", height: "16px", accentColor: "#C026D3" }} />
+              <div>
+                <div style={{ fontSize: "0.83rem", fontWeight: 600, color: "#0A0E27" }}>Включить валидацию</div>
+                <div style={{ fontSize: "0.72rem", color: "#8B92B8" }}>Проверять корректность формата email</div>
+              </div>
+            </label>
+            {validate && (
+              <Field label="Сообщение об ошибке">
+                <input style={p.input} value={errorMsg}
+                  onChange={(e) => setErrorMsg(e.target.value)}
+                  placeholder="Это не похоже на email. Попробуйте ещё раз" />
+              </Field>
+            )}
+          </div>
+        )}
+
+        {/* ACTION узел — webhook */}
+        {type === "action" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(123,97,255,0.04)", border: "1.5px solid rgba(123,97,255,0.18)", borderRadius: "12px", padding: "12px" }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7B61FF", display: "flex", alignItems: "center", gap: "6px" }}>⚡ Webhook-интеграция</div>
+            <Field label="URL для отправки данных">
+              <input style={p.input} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
+                placeholder="https://your-service.com/webhook" type="url" />
+            </Field>
+            <Field label="HTTP метод">
+              <select style={p.select} value={webhookMethod} onChange={(e) => setWebhookMethod(e.target.value)}>
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+              </select>
+            </Field>
+            <Field label="Секретный ключ (необязательно)">
+              <input style={p.input} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder="Для подписи запроса" type="password" />
+            </Field>
+            <div style={{ background: "#F8F9FF", borderRadius: "9px", padding: "9px 11px", fontSize: "0.73rem", color: "#8B92B8", lineHeight: 1.5 }}>
+              При достижении этого узла бот отправит собранные данные (email, имя) на указанный URL в формате JSON.
+            </div>
+          </div>
+        )}
+
+        {/* CONDITION узел */}
+        {type === "condition" && (
+          <div style={{ background: "rgba(255,184,0,0.06)", border: "1.5px solid rgba(255,184,0,0.2)", borderRadius: "12px", padding: "12px", fontSize: "0.78rem", color: "#8B92B8", lineHeight: 1.5 }}>
+            <span style={{ fontWeight: 700, color: "#B8860B" }}>💡 Подсказка:</span> в поле «Название» укажите ключевые слова через запятую — когда пользователь напишет одно из них, бот пойдёт по этой ветке.
+            <div style={{ marginTop: "6px" }}>Пример: <span style={{ fontFamily: "monospace", color: "#FFB800" }}>да,конечно,хочу</span></div>
+          </div>
+        )}
+
         <div style={p.actions}>
           <button style={p.deleteBtn} onClick={() => onDelete(node.id)}>🗑 Удалить</button>
-          <button style={p.saveBtn} onClick={() => onSave({ ...node, label, message, type })}>Применить</button>
+          <button style={p.saveBtn} onClick={save}>Применить</button>
         </div>
       </div>
     </div>
@@ -491,7 +580,9 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
   const [thinking, setThinking] = useState(false);
   // Когда бот ожидает email от пользователя
   const [awaitingEmail, setAwaitingEmail] = useState(false);
+  const [awaitingEmailNode, setAwaitingEmailNode] = useState<Node | null>(null);
   const [collectedName, setCollectedName] = useState("");
+  const [vars, setVars] = useState<Record<string, string>>({});
   const [leadsCount, setLeadsCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -505,7 +596,9 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
     setCurrentNodeId(null);
     setInput("");
     setAwaitingEmail(false);
+    setAwaitingEmailNode(null);
     setCollectedName("");
+    setVars({});
     if (startNode) {
       setTimeout(() => {
         addBotMsg(startNode.message || "Привет! Чем могу помочь?", startNode.id);
@@ -550,30 +643,35 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
     addBotMsg(emailNode.message || "Пожалуйста, введите ваш email:", emailNode.id);
     setCurrentNodeId(emailNode.id);
     setAwaitingEmail(true);
+    setAwaitingEmailNode(emailNode);
   };
 
   // Сохранение лида после получения email
   const handleEmailInput = async (userText: string) => {
     const email = userText.trim().toLowerCase();
-    if (!EMAIL_RE.test(email)) {
+    const shouldValidate = awaitingEmailNode?.validate !== false;
+    if (shouldValidate && !EMAIL_RE.test(email)) {
       setThinking(false);
-      addBotMsg("Это не похоже на email. Попробуйте ещё раз — например: ivan@example.com");
+      addBotMsg(awaitingEmailNode?.errorMsg || "Это не похоже на email. Попробуйте ещё раз — например: ivan@example.com");
       return;
     }
+    const key = awaitingEmailNode?.varName || "user_email";
+    setVars((v) => ({ ...v, [key]: email }));
     try {
       const res = await api.saveLead(botId, email, collectedName);
       setThinking(false);
       setAwaitingEmail(false);
+      setAwaitingEmailNode(null);
       if (res.duplicate) {
         addBotMsg("Этот email уже зарегистрирован. Продолжаем!", undefined, "email_saved");
       } else {
         setLeadsCount((c) => c + 1);
         addBotMsg(`✅ Email сохранён! Спасибо, мы свяжемся с вами.`, undefined, "email_saved");
       }
-      // Переходим к следующему узлу после email-узла
       const afterEmail = getNextNode(currentNodeId!);
       if (afterEmail) {
         setTimeout(() => {
+          if (afterEmail.type === "email") { handleEmailNode(afterEmail); return; }
           addBotMsg(afterEmail.message || `[${afterEmail.label}]`, afterEmail.id);
           setCurrentNodeId(afterEmail.id);
         }, 600);
@@ -647,7 +745,8 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
       {/* Email mode banner */}
       {awaitingEmail && (
         <div style={{ padding: "8px 14px", background: "rgba(224,64,251,0.08)", borderBottom: "1px solid rgba(224,64,251,0.2)", fontSize: "0.75rem", color: "#C026D3", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-          📧 Ожидаю email-адрес...
+          📧 Ожидаю {awaitingEmailNode?.varName ? `$${awaitingEmailNode.varName}` : "email-адрес"}...
+          {awaitingEmailNode?.validate === false && <span style={{ fontWeight: 400, color: "#8B92B8" }}>(без валидации)</span>}
         </div>
       )}
 
@@ -711,6 +810,22 @@ function ChatTestPanel({ nodes, edges, botName, botId, onClose }: {
           </div>
         ) : null;
       })()}
+
+      {/* Хранилище переменных */}
+      {Object.keys(vars).length > 0 && (
+        <div style={{ padding: "8px 14px", borderTop: "1px solid #E0E4F0", background: "#F8F9FF" }}>
+          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "5px" }}>Переменные сессии</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+            {Object.entries(vars).map(([k, v]) => (
+              <div key={k} style={{ background: "#fff", border: "1.5px solid #E0E4F0", borderRadius: "7px", padding: "3px 8px", fontSize: "0.72rem", display: "flex", gap: "5px" }}>
+                <span style={{ color: "#C026D3", fontFamily: "monospace", fontWeight: 700 }}>${k}</span>
+                <span style={{ color: "#4A5280" }}>=</span>
+                <span style={{ color: "#0A0E27", fontFamily: "monospace" }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px" }}>

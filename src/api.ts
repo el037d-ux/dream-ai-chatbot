@@ -38,4 +38,11 @@ export const api = {
     req(`${LEADS_URL}?action=save&bot_id=${botId}`, "POST", { email, name, extra: extra || {} }),
   getLeads: (botId: number) =>
     req(`${LEADS_URL}?action=list&bot_id=${botId}`, "GET", undefined, true),
+
+  getWebhooks: (botId: number) =>
+    req(`${BOTS_URL}?action=webhooks&id=${botId}`, "GET", undefined, true),
+  saveWebhook: (botId: number, data: object) =>
+    req(`${BOTS_URL}?action=webhook-save&id=${botId}`, "POST", data, true),
+  toggleWebhook: (id: number, active: boolean) =>
+    req(`${BOTS_URL}?action=webhook-toggle`, "POST", { id, active }, true),
 };
