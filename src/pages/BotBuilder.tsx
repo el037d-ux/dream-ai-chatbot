@@ -472,9 +472,9 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
             </div>
             <div>
               <div style={lbl()}>Дополнительные требования к формату</div>
-              <textarea style={inp({ resize: "vertical", minHeight: "70px" })} value={prompt.format.split("\n").filter((l) => !["Маркированные списки для перечислений","**Жирный** для ключевых терминов","Уточняющий вопрос в конце ответа"].includes(l)).join("\n")}
+              <textarea style={inp({ resize: "vertical", minHeight: "70px" })} value={(prompt.format || "").split("\n").filter((l) => !["Маркированные списки для перечислений","**Жирный** для ключевых терминов","Уточняющий вопрос в конце ответа"].includes(l)).join("\n")}
                 onChange={(e) => {
-                  const checked = ["Маркированные списки для перечислений","**Жирный** для ключевых терминов","Уточняющий вопрос в конце ответа"].filter((l) => prompt.format.includes(l));
+                  const checked = ["Маркированные списки для перечислений","**Жирный** для ключевых терминов","Уточняющий вопрос в конце ответа"].filter((l) => (prompt.format || "").includes(l));
                   onChange({ ...prompt, format: [...checked, e.target.value].filter(Boolean).join("\n") });
                 }} placeholder="Отвечай только цифрами в таблице / всегда называй цену в конце..." rows={3} />
             </div>
