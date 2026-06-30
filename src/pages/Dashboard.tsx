@@ -1,21 +1,10 @@
 import { useState, useEffect } from "react";
-import { api, VK_BOT_URL } from "@/api";
-
-interface Bot {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  dialogs_count: number;
-  created_at: string;
-}
-interface Lead {
-  id: number; email: string; name: string; phone: string; created_at: string;
-}
-interface Webhook {
-  id: number; name: string; url: string; method: string;
-  secret: string; events: string[]; active: boolean; created_at: string;
-}
+import { api } from "@/api";
+import { Bot, Lead, Webhook, VkStatus, Tab, s } from "./dashboard/types";
+import BotsTab from "./dashboard/BotsTab";
+import LeadsTab from "./dashboard/LeadsTab";
+import WebhooksTab from "./dashboard/WebhooksTab";
+import VkTab from "./dashboard/VkTab";
 
 interface Props {
   user: { id: number; email: string; name: string };
@@ -23,14 +12,6 @@ interface Props {
   onOpenBot: (id: number) => void;
   onGoHome: () => void;
 }
-
-interface VkStatus {
-  connected: boolean;
-  group_id?: number; group_name?: string;
-  secret_key?: string; confirm_code?: string; active?: boolean;
-}
-
-type Tab = "bots" | "leads" | "webhooks" | "vk";
 
 export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props) {
   const [tab, setTab] = useState<Tab>("bots");
@@ -198,501 +179,70 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
 
       {/* Main */}
       <main style={s.main}>
-        {tab === "bots" && (<>
-          <div style={s.header}>
-            <div>
-              <h1 style={s.pageTitle}>Мои боты</h1>
-              <p style={s.pageSubtitle}>Управляйте и настраивайте своих чат-ботов</p>
-            </div>
-            <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать бота</button>
-          </div>
+        {tab === "bots" && (
+          <BotsTab
+            bots={bots}
+            loading={loading}
+            showCreate={showCreate}
+            newName={newName}
+            newDesc={newDesc}
+            creating={creating}
+            error={error}
+            onOpenBot={onOpenBot}
+            onLoadLeads={loadLeads}
+            onLoadWebhooks={loadWebhooks}
+            onLoadVk={loadVkStatus}
+            onShowCreate={setShowCreate}
+            onSetNewName={setNewName}
+            onSetNewDesc={setNewDesc}
+            onCreateBot={createBot}
+          />
+        )}
 
-          {/* Stats */}
-          <div style={s.stats}>
-            {[
-              { icon: "🤖", label: "Всего ботов", value: bots.length },
-              { icon: "✅", label: "Активных", value: bots.filter((b) => b.status === "active").length },
-              { icon: "💬", label: "Диалогов сегодня", value: 0 },
-              { icon: "⚡", label: "Uptime", value: "98%" },
-            ].map((st) => (
-              <div key={st.label} style={s.statCard}>
-                <div style={s.statIcon}>{st.icon}</div>
-                <div style={s.statValue}>{st.value}</div>
-                <div style={s.statLabel}>{st.label}</div>
-              </div>
-            ))}
-          </div>
+        {tab === "leads" && (
+          <LeadsTab
+            bots={bots}
+            leads={leads}
+            loading={leadsLoading}
+            selectedBotId={selectedBotForLeads}
+            onLoadLeads={loadLeads}
+            onBack={() => setTab("bots")}
+          />
+        )}
 
-          {/* Bots grid */}
-          {loading ? (
-            <div style={s.empty}>Загружаю ботов...</div>
-          ) : bots.length === 0 ? (
-            <div style={s.emptyBox}>
-              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🤖</div>
-              <h3 style={s.emptyTitle}>Ботов пока нет</h3>
-              <p style={s.emptySub}>Создайте первого бота и начните автоматизировать общение с клиентами</p>
-              <button style={s.createBtn} onClick={() => setShowCreate(true)}>+ Создать первого бота</button>
-            </div>
-          ) : (
-            <div style={s.botsGrid}>
-              {bots.map((bot) => (
-                <div key={bot.id} style={s.botCard}>
-                  <div style={s.botCardTop}>
-                    <div style={s.botIcon}>🤖</div>
-                    <span style={{ ...s.statusBadge, ...(bot.status === "active" ? s.statusActive : s.statusInactive) }}>
-                      {bot.status === "active" ? "Активен" : "Неактивен"}
-                    </span>
-                  </div>
-                  <h3 style={s.botName}>{bot.name}</h3>
-                  <p style={s.botDesc}>{bot.description || "Нет описания"}</p>
-                  <div style={s.botMeta}>
-                    <span>💬 {bot.dialogs_count} диалогов</span>
-                    <span>{new Date(bot.created_at).toLocaleDateString("ru")}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    <button style={{ ...s.editBtn, flex: 1 }} onClick={() => onOpenBot(bot.id)}>Конструктор →</button>
-                    <button style={{ background: "rgba(224,64,251,0.1)", border: "1px solid rgba(224,64,251,0.25)", color: "#C026D3", borderRadius: "10px", padding: "10px 10px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }} onClick={() => loadLeads(bot.id)}>📧 Лиды</button>
-                    <button style={{ background: "rgba(123,97,255,0.1)", border: "1px solid rgba(123,97,255,0.25)", color: "#7B61FF", borderRadius: "10px", padding: "10px 10px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }} onClick={() => loadWebhooks(bot.id)}>🔗</button>
-                    <button style={{ background: "rgba(0,119,255,0.1)", border: "1px solid rgba(0,119,255,0.25)", color: "#0077FF", borderRadius: "10px", padding: "10px 10px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }} onClick={() => loadVkStatus(bot.id)}>💙</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>)}
+        {tab === "webhooks" && (
+          <WebhooksTab
+            bots={bots}
+            webhooks={webhooks}
+            loading={whLoading}
+            selectedBotId={selectedBotForWh}
+            whForm={whForm}
+            whSaving={whSaving}
+            onLoadWebhooks={loadWebhooks}
+            onBack={() => setTab("bots")}
+            onSetWhForm={setWhForm}
+            onSaveWebhook={saveWebhook}
+            onToggleWebhook={toggleWebhook}
+          />
+        )}
 
-        {tab === "leads" && (<>
-          <div style={s.header}>
-            <div>
-              <h1 style={s.pageTitle}>📧 Лиды</h1>
-              <p style={s.pageSubtitle}>
-                Бот: <strong>{bots.find((b) => b.id === selectedBotForLeads)?.name ?? "—"}</strong>
-                {" · "}
-                <button style={{ background: "none", border: "none", color: "#0077FF", cursor: "pointer", fontSize: "0.88rem", padding: 0 }} onClick={() => setTab("bots")}>← Назад к ботам</button>
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {bots.map((b) => (
-                <button key={b.id}
-                  style={{ background: b.id === selectedBotForLeads ? "linear-gradient(135deg,#E040FB,#7B61FF)" : "#F4F6FF", color: b.id === selectedBotForLeads ? "#fff" : "#4A5280", border: "1.5px solid #E0E4F0", borderRadius: "10px", padding: "8px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => loadLeads(b.id)}>{b.name}</button>
-              ))}
-            </div>
-          </div>
-
-          {leadsLoading ? (
-            <div style={s.empty}>Загружаю лиды...</div>
-          ) : leads.length === 0 ? (
-            <div style={s.emptyBox}>
-              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>📧</div>
-              <h3 style={s.emptyTitle}>Лидов пока нет</h3>
-              <p style={s.emptySub}>Добавьте узел «Сбор email» в сценарий бота и протестируйте его</p>
-            </div>
-          ) : (
-            <div style={{ background: "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid #F0F2F8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 700, color: "#0A0E27" }}>Всего лидов: {leads.length}</span>
-                <button
-                  onClick={() => {
-                    const csv = ["Email,Имя,Телефон,Дата", ...leads.map((l) => `${l.email},${l.name},${l.phone},${new Date(l.created_at).toLocaleDateString("ru")}`)].join("\n");
-                    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "leads.csv"; a.click();
-                  }}
-                  style={{ background: "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "9px", padding: "7px 14px", fontSize: "0.82rem", fontWeight: 600, color: "#4A5280", cursor: "pointer" }}>
-                  ⬇ Скачать CSV
-                </button>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#F8F9FF" }}>
-                    {["Email", "Имя", "Телефон", "Дата"].map((h) => (
-                      <th key={h} style={{ padding: "12px 20px", textAlign: "left", fontSize: "0.78rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.map((lead, i) => (
-                    <tr key={lead.id} style={{ borderTop: "1px solid #F0F2F8", background: i % 2 === 0 ? "#fff" : "#FAFBFF" }}>
-                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#0077FF", fontWeight: 600 }}>{lead.email}</td>
-                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#0A0E27" }}>{lead.name || "—"}</td>
-                      <td style={{ padding: "13px 20px", fontSize: "0.88rem", color: "#8B92B8" }}>{lead.phone || "—"}</td>
-                      <td style={{ padding: "13px 20px", fontSize: "0.78rem", color: "#C8CEE0" }}>{new Date(lead.created_at).toLocaleDateString("ru")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>)}
-
-        {/* ── WEBHOOKS TAB ── */}
-        {tab === "webhooks" && (<>
-          <div style={s.header}>
-            <div>
-              <h1 style={s.pageTitle}>🔗 Webhook-интеграции</h1>
-              <p style={s.pageSubtitle}>
-                Бот: <strong>{bots.find((b) => b.id === selectedBotForWh)?.name ?? "—"}</strong>
-                {" · "}
-                <button style={{ background: "none", border: "none", color: "#0077FF", cursor: "pointer", fontSize: "0.88rem", padding: 0 }} onClick={() => setTab("bots")}>← Назад к ботам</button>
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              {bots.map((b) => (
-                <button key={b.id}
-                  style={{ background: b.id === selectedBotForWh ? "linear-gradient(135deg,#7B61FF,#0077FF)" : "#F4F6FF", color: b.id === selectedBotForWh ? "#fff" : "#4A5280", border: "1.5px solid #E0E4F0", borderRadius: "10px", padding: "8px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => loadWebhooks(b.id)}>{b.name}</button>
-              ))}
-              <button style={{ background: "linear-gradient(135deg,#7B61FF,#0077FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "8px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}
-                onClick={() => setWhForm({ name: "", url: "", method: "POST", secret: "", events: ["lead.created"], active: true })}>
-                + Добавить webhook
-              </button>
-            </div>
-          </div>
-
-          {/* Форма создания/редактирования */}
-          {whForm && (
-            <div style={{ background: "#fff", borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1.5px solid rgba(123,97,255,0.2)" }}>
-              <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.95rem", marginBottom: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-                🔗 {whForm.id ? "Редактировать webhook" : "Новый webhook"}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                {[
-                  { label: "Название", key: "name", placeholder: "Например: Отправка в CRM", type: "text" },
-                  { label: "HTTP метод", key: "method", placeholder: "", type: "select" },
-                  { label: "URL для отправки", key: "url", placeholder: "https://your-service.com/webhook", type: "url", span: true },
-                  { label: "Секретный ключ (необязательно)", key: "secret", placeholder: "Для подписи X-Webhook-Secret", type: "password" },
-                ].map((f) => (
-                  <div key={f.key} style={{ gridColumn: f.span ? "1 / -1" : "auto" }}>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "5px" }}>{f.label}</label>
-                    {f.type === "select" ? (
-                      <select style={{ padding: "9px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", width: "100%", background: "#FAFBFF" }}
-                        value={whForm.method || "POST"} onChange={(e) => setWhForm({ ...whForm, method: e.target.value })}>
-                        <option value="POST">POST</option>
-                        <option value="GET">GET</option>
-                        <option value="PUT">PUT</option>
-                      </select>
-                    ) : (
-                      <input style={{ padding: "9px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", width: "100%", boxSizing: "border-box" as const, background: "#FAFBFF" }}
-                        type={f.type} placeholder={f.placeholder}
-                        value={(whForm as Record<string, string>)[f.key] || ""}
-                        onChange={(e) => setWhForm({ ...whForm, [f.key]: e.target.value })} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* События */}
-              <div style={{ marginTop: "14px" }}>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "8px" }}>События</label>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {["lead.created", "message.received", "session.started"].map((ev) => {
-                    const checked = (whForm.events || []).includes(ev);
-                    return (
-                      <label key={ev} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "7px 12px", border: `1.5px solid ${checked ? "#7B61FF44" : "#E0E4F0"}`, borderRadius: "9px", background: checked ? "rgba(123,97,255,0.06)" : "#fff", cursor: "pointer", fontSize: "0.82rem" }}>
-                        <input type="checkbox" checked={checked} style={{ accentColor: "#7B61FF" }}
-                          onChange={(e) => {
-                            const cur = whForm.events || [];
-                            setWhForm({ ...whForm, events: e.target.checked ? [...cur, ev] : cur.filter((x) => x !== ev) });
-                          }} />
-                        <code style={{ color: checked ? "#7B61FF" : "#4A5280" }}>{ev}</code>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Пример payload */}
-              <div style={{ marginTop: "14px", background: "#0A0E27", borderRadius: "10px", padding: "12px 14px", fontFamily: "monospace", fontSize: "0.75rem", color: "#00D4AA", lineHeight: 1.6 }}>
-                <div style={{ color: "#8B92B8", marginBottom: "6px", fontSize: "0.7rem" }}>Пример payload (POST):</div>
-                {`{\n  "event": "lead.created",\n  "bot_id": ${selectedBotForWh || "N"},\n  "data": {\n    "email": "user@example.com",\n    "name": "Иван"\n  }\n}`}
-              </div>
-
-              <div style={{ display: "flex", gap: "10px", marginTop: "16px", justifyContent: "flex-end" }}>
-                <button style={{ background: "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "10px", padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, color: "#4A5280", cursor: "pointer" }} onClick={() => setWhForm(null)}>Отмена</button>
-                <button style={{ background: whSaving ? "#E0E4F0" : "linear-gradient(135deg,#7B61FF,#0077FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "9px 22px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}
-                  disabled={whSaving || !whForm.url?.trim()} onClick={saveWebhook}>
-                  {whSaving ? "Сохраняю..." : "Сохранить webhook"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Список webhooks */}
-          {whLoading ? (
-            <div style={s.empty}>Загружаю...</div>
-          ) : webhooks.length === 0 && !whForm ? (
-            <div style={s.emptyBox}>
-              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🔗</div>
-              <h3 style={s.emptyTitle}>Webhook-интеграций пока нет</h3>
-              <p style={s.emptySub}>Подключите свой сервис — бот будет отправлять данные при каждом новом лиде</p>
-              <button style={s.createBtn} onClick={() => setWhForm({ name: "", url: "", method: "POST", secret: "", events: ["lead.created"], active: true })}>+ Добавить первый webhook</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {webhooks.map((wh) => (
-                <div key={wh.id} style={{ background: "#fff", borderRadius: "16px", padding: "18px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: `1.5px solid ${wh.active ? "rgba(123,97,255,0.15)" : "#E0E4F0"}`, display: "flex", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: wh.active ? "rgba(123,97,255,0.1)" : "#F4F6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>🔗</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.9rem" }}>{wh.name}</div>
-                    <div style={{ fontSize: "0.78rem", color: "#8B92B8", display: "flex", alignItems: "center", gap: "8px", marginTop: "3px", flexWrap: "wrap" }}>
-                      <code style={{ background: "#F4F6FF", borderRadius: "5px", padding: "2px 6px", color: "#7B61FF", fontSize: "0.73rem" }}>{wh.method}</code>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "280px" }}>{wh.url}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "5px", marginTop: "6px", flexWrap: "wrap" }}>
-                      {wh.events.map((ev) => <code key={ev} style={{ fontSize: "0.68rem", background: "rgba(123,97,255,0.08)", color: "#7B61FF", borderRadius: "5px", padding: "2px 6px" }}>{ev}</code>)}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
-                    <button
-                      onClick={() => toggleWebhook(wh)}
-                      style={{ padding: "7px 14px", borderRadius: "9px", border: "1.5px solid #E0E4F0", background: wh.active ? "rgba(0,212,170,0.1)" : "#F4F6FF", color: wh.active ? "#00A884" : "#8B92B8", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>
-                      {wh.active ? "● Активен" : "○ Выкл"}
-                    </button>
-                    <button onClick={() => setWhForm({ ...wh })}
-                      style={{ padding: "7px 12px", borderRadius: "9px", border: "1.5px solid #E0E4F0", background: "#F4F6FF", color: "#4A5280", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
-                      ✏️ Изменить
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>)}
-
-        {/* ── VK TAB ── */}
-        {tab === "vk" && (<>
-          <div style={s.header}>
-            <div>
-              <h1 style={s.pageTitle}>💙 ВКонтакте</h1>
-              <p style={s.pageSubtitle}>
-                Бот: <strong>{bots.find((b) => b.id === selectedBotForVk)?.name ?? "—"}</strong>
-                {" · "}
-                <button style={{ background: "none", border: "none", color: "#0077FF", cursor: "pointer", fontSize: "0.88rem", padding: 0 }} onClick={() => setTab("bots")}>← Назад</button>
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {bots.map((b) => (
-                <button key={b.id}
-                  style={{ background: b.id === selectedBotForVk ? "linear-gradient(135deg,#0077FF,#00A8FF)" : "#F4F6FF", color: b.id === selectedBotForVk ? "#fff" : "#4A5280", border: "1.5px solid #E0E4F0", borderRadius: "10px", padding: "8px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
-                  onClick={() => loadVkStatus(b.id)}>{b.name}</button>
-              ))}
-            </div>
-          </div>
-
-          {vkLoading ? (
-            <div style={s.empty}>Загружаю...</div>
-          ) : (<>
-
-            {/* Статус подключения */}
-            {vkStatus?.connected ? (
-              <div style={{ background: "#fff", borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: "1.5px solid rgba(0,119,255,0.15)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
-                  <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "linear-gradient(135deg,#0077FF,#00A8FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>💙</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "1rem" }}>{vkStatus.group_name || `Группа #${vkStatus.group_id}`}</div>
-                    <div style={{ fontSize: "0.8rem", color: vkStatus.active ? "#00A884" : "#8B92B8", fontWeight: 600 }}>
-                      {vkStatus.active ? "● Активна" : "○ Отключена"} · ID {vkStatus.group_id}
-                    </div>
-                  </div>
-                  <button onClick={toggleVk}
-                    style={{ padding: "8px 16px", borderRadius: "10px", border: "1.5px solid #E0E4F0", background: vkStatus.active ? "#fff0f0" : "#f0fff8", color: vkStatus.active ? "#d63031" : "#00A884", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
-                    {vkStatus.active ? "Отключить" : "Включить"}
-                  </button>
-                </div>
-
-                {/* Инструкция по настройке Callback */}
-                <div style={{ background: "#F8F9FF", borderRadius: "14px", padding: "18px 20px" }}>
-                  <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.9rem", marginBottom: "14px" }}>📋 Настройка Callback API в ВКонтакте</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {[
-                      { n: 1, text: "Открой свою группу ВК → Управление → Работа с API → Callback API" },
-                      { n: 2, text: "Версия API: 5.131" },
-                      { n: 3, label: "URL сервера:", code: VK_BOT_URL },
-                      { n: 4, label: "Строка подтверждения:", code: vkStatus.confirm_code || "—" },
-                      { n: 5, text: 'Нажми "Подтвердить". После подтверждения включи событие "Входящее сообщение"' },
-                    ].map((step) => (
-                      <div key={step.n} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#0077FF", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, flexShrink: 0, marginTop: "1px" }}>{step.n}</div>
-                        <div style={{ fontSize: "0.84rem", color: "#4A5280", lineHeight: 1.5, flex: 1 }}>
-                          {step.text && <span>{step.text}</span>}
-                          {step.label && <span style={{ color: "#8B92B8" }}>{step.label} </span>}
-                          {step.code && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                              <code style={{ background: "#0A0E27", color: "#00D4AA", padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", flex: 1, wordBreak: "break-all" }}>{step.code}</code>
-                              <button onClick={() => navigator.clipboard.writeText(step.code!)}
-                                style={{ background: "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "8px", padding: "6px 10px", fontSize: "0.75rem", cursor: "pointer", flexShrink: 0, color: "#4A5280", fontWeight: 600 }}>Копировать</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {vkStatus.secret_key && (
-                    <div style={{ marginTop: "14px", padding: "10px 14px", background: "rgba(255,184,0,0.08)", borderRadius: "10px", fontSize: "0.78rem", color: "#8B92B8" }}>
-                      🔑 Секретный ключ настроен — укажи его в поле «Секретный ключ» в настройках Callback API ВК
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Форма подключения */
-              <div style={{ background: "#fff", borderRadius: "20px", padding: "28px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", border: "1.5px solid #E0E4F0" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
-                  <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "linear-gradient(135deg,#0077FF,#00A8FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>💙</div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "1rem" }}>Подключить ВКонтакте</div>
-                    <div style={{ fontSize: "0.8rem", color: "#8B92B8" }}>Бот будет отвечать на сообщения в вашем сообществе ВК</div>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
-                      Токен сообщества (Ключ доступа)
-                    </label>
-                    <input
-                      style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", boxSizing: "border-box" as const, background: "#FAFBFF" }}
-                      placeholder="vk1.a.xxxxxx..."
-                      value={vkForm.accessToken}
-                      onChange={(e) => setVkForm((f) => ({ ...f, accessToken: e.target.value }))}
-                    />
-                    <div style={{ fontSize: "0.72rem", color: "#8B92B8", marginTop: "4px" }}>Управление → Работа с API → Ключи доступа → Создать ключ</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
-                      ID сообщества
-                    </label>
-                    <input
-                      style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", boxSizing: "border-box" as const, background: "#FAFBFF" }}
-                      placeholder="123456789"
-                      type="number"
-                      value={vkForm.groupId}
-                      onChange={(e) => setVkForm((f) => ({ ...f, groupId: e.target.value }))}
-                    />
-                    <div style={{ fontSize: "0.72rem", color: "#8B92B8", marginTop: "4px" }}>Найди в адресной строке: vk.com/club<strong>123456789</strong></div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
-                      Секретный ключ (необязательно)
-                    </label>
-                    <input
-                      style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", boxSizing: "border-box" as const, background: "#FAFBFF" }}
-                      placeholder="Для дополнительной защиты"
-                      type="password"
-                      value={vkForm.secretKey}
-                      onChange={(e) => setVkForm((f) => ({ ...f, secretKey: e.target.value }))}
-                    />
-                  </div>
-
-                  {vkError && <div style={{ padding: "10px 14px", background: "#fff0f0", borderRadius: "10px", color: "#d63031", fontSize: "0.84rem" }}>⚠️ {vkError}</div>}
-
-                  <button onClick={connectVk} disabled={vkSaving || !vkForm.accessToken || !vkForm.groupId}
-                    style={{ background: vkSaving || !vkForm.accessToken || !vkForm.groupId ? "#E0E4F0" : "linear-gradient(135deg,#0077FF,#00A8FF)", color: "#fff", border: "none", borderRadius: "12px", padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer" }}>
-                    {vkSaving ? "Подключаю..." : "💙 Подключить сообщество"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Как это работает */}
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "20px", marginTop: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-              <div style={{ fontWeight: 700, color: "#0A0E27", fontSize: "0.88rem", marginBottom: "12px" }}>Как работает интеграция с ВК</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {[
-                  ["💬", "Пользователь пишет сообщение в группу ВКонтакте"],
-                  ["🤖", "Бот обрабатывает его по сценарию из конструктора"],
-                  ["📧", "Если в сценарии есть узел «Сбор email» — данные сохраняются в лиды"],
-                  ["⚡", "Action-узел отправляет webhook на ваш сервер"],
-                  ["🔄", "AI-узел подключает GPT для свободного диалога"],
-                ].map(([icon, text]) => (
-                  <div key={text as string} style={{ display: "flex", gap: "10px", alignItems: "center", fontSize: "0.84rem", color: "#4A5280" }}>
-                    <span style={{ fontSize: "1.1rem" }}>{icon}</span>
-                    <span>{text as string}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>)}
-        </>)}
+        {tab === "vk" && (
+          <VkTab
+            bots={bots}
+            vkStatus={vkStatus}
+            vkLoading={vkLoading}
+            vkForm={vkForm}
+            vkSaving={vkSaving}
+            vkError={vkError}
+            selectedBotId={selectedBotForVk}
+            onLoadVkStatus={loadVkStatus}
+            onBack={() => setTab("bots")}
+            onSetVkForm={setVkForm}
+            onConnectVk={connectVk}
+            onToggleVk={toggleVk}
+          />
+        )}
       </main>
-
-      {/* Modal create */}
-      {showCreate && (
-        <div style={s.overlay} onClick={() => setShowCreate(false)}>
-          <div style={s.modal} onClick={(e) => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>Новый бот</h2>
-            <form onSubmit={createBot} style={s.form}>
-              <div style={s.field}>
-                <label style={s.label}>Название бота *</label>
-                <input style={s.input} placeholder="Например: Бот поддержки" value={newName} onChange={(e) => setNewName(e.target.value)} required autoFocus />
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Описание</label>
-                <input style={s.input} placeholder="Для чего этот бот?" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
-              </div>
-              {error && <div style={s.error}>{error}</div>}
-              <div style={s.modalActions}>
-                <button type="button" style={s.cancelBtn} onClick={() => setShowCreate(false)}>Отмена</button>
-                <button type="submit" style={{ ...s.createBtn, opacity: creating ? 0.7 : 1 }} disabled={creating}>
-                  {creating ? "Создаю..." : "Создать и открыть →"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  page: { display: "flex", minHeight: "100vh", background: "#F4F6FF", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-  sidebar: { width: "240px", background: "#0A0E27", display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0 },
-  sidebarLogo: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "36px", padding: "0 8px" },
-  logoIcon: { width: "32px", height: "32px", background: "linear-gradient(135deg,#0077FF,#7B61FF)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1rem" },
-  logoText: { fontSize: "1.2rem", fontWeight: 800, color: "#fff" },
-  nav: { display: "flex", flexDirection: "column", gap: "4px", flex: 1 },
-  navItem: { padding: "10px 12px", borderRadius: "10px", color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", cursor: "pointer", transition: "all 0.2s" },
-  navActive: { background: "rgba(255,255,255,0.1)", color: "#fff" },
-  navDivider: { height: "1px", background: "rgba(255,255,255,0.08)", margin: "8px 0" },
-  sidebarBottom: { borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "12px" },
-  userInfo: { display: "flex", alignItems: "center", gap: "10px" },
-  avatar: { width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg,#0077FF,#7B61FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 },
-  userName: { color: "#fff", fontSize: "0.85rem", fontWeight: 600 },
-  userEmail: { color: "rgba(255,255,255,0.4)", fontSize: "0.75rem" },
-  logoutBtn: { background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "rgba(255,255,255,0.5)", padding: "8px", fontSize: "0.8rem", cursor: "pointer" },
-  main: { flex: 1, padding: "32px", overflowY: "auto" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" },
-  pageTitle: { fontSize: "1.75rem", fontWeight: 800, color: "#0A0E27", marginBottom: "4px" },
-  pageSubtitle: { color: "#8B92B8", fontSize: "0.9rem" },
-  createBtn: { background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "12px", padding: "12px 20px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
-  stats: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "28px" },
-  statCard: { background: "#fff", borderRadius: "16px", padding: "20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" },
-  statIcon: { fontSize: "1.5rem", marginBottom: "8px" },
-  statValue: { fontSize: "1.75rem", fontWeight: 800, color: "#0A0E27", lineHeight: 1 },
-  statLabel: { fontSize: "0.78rem", color: "#8B92B8", marginTop: "4px" },
-  botsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: "20px" },
-  botCard: { background: "#fff", borderRadius: "20px", padding: "24px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: "12px" },
-  botCardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  botIcon: { fontSize: "2rem" },
-  statusBadge: { fontSize: "0.75rem", fontWeight: 700, padding: "4px 10px", borderRadius: "100px" },
-  statusActive: { background: "rgba(0,212,170,0.12)", color: "#00A884" },
-  statusInactive: { background: "rgba(139,146,184,0.12)", color: "#8B92B8" },
-  botName: { fontSize: "1.1rem", fontWeight: 700, color: "#0A0E27" },
-  botDesc: { fontSize: "0.85rem", color: "#8B92B8", flexGrow: 1 },
-  botMeta: { display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#C8CEE0" },
-  editBtn: { background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "10px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" },
-  empty: { color: "#8B92B8", textAlign: "center", padding: "60px" },
-  emptyBox: { background: "#fff", borderRadius: "20px", padding: "60px 40px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" },
-  emptyTitle: { fontSize: "1.3rem", fontWeight: 700, color: "#0A0E27", marginBottom: "8px" },
-  emptySub: { color: "#8B92B8", fontSize: "0.95rem", marginBottom: "24px" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "24px" },
-  modal: { background: "#fff", borderRadius: "20px", padding: "36px", width: "100%", maxWidth: "460px", boxShadow: "0 30px 60px rgba(0,0,0,0.15)" },
-  modalTitle: { fontSize: "1.4rem", fontWeight: 800, color: "#0A0E27", marginBottom: "24px" },
-  form: { display: "flex", flexDirection: "column", gap: "16px" },
-  field: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { fontSize: "0.85rem", fontWeight: 600, color: "#4A5280" },
-  input: { padding: "12px 16px", borderRadius: "12px", border: "1.5px solid #E0E4F0", fontSize: "0.95rem", outline: "none", color: "#0A0E27" },
-  error: { background: "#fff0f0", border: "1px solid #ffd0d0", borderRadius: "10px", padding: "10px 14px", color: "#d63031", fontSize: "0.875rem" },
-  modalActions: { display: "flex", gap: "12px", justifyContent: "flex-end" },
-  cancelBtn: { background: "#F4F6FF", border: "none", borderRadius: "12px", padding: "12px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", color: "#4A5280" },
-};
