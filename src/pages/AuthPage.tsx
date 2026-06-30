@@ -10,12 +10,18 @@ export default function AuthPage({ onAuth }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPolicy, setShowPolicy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (mode === "register" && !agreed) {
+      setError("Необходимо согласиться с политикой обработки персональных данных");
+      return;
+    }
     setLoading(true);
     try {
       const data =
@@ -84,9 +90,27 @@ export default function AuthPage({ onAuth }: Props) {
             />
           </div>
 
+          {mode === "register" && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "0.83rem", color: "#4A5280", lineHeight: 1.5 }}>
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                style={{ marginTop: "2px", width: "16px", height: "16px", flexShrink: 0, accentColor: "#0077FF", cursor: "pointer" }}
+              />
+              <span>
+                Я соглашаюсь с{" "}
+                <button type="button" onClick={() => setShowPolicy(true)}
+                  style={{ background: "none", border: "none", color: "#0077FF", fontWeight: 600, cursor: "pointer", fontSize: "0.83rem", padding: 0, textDecoration: "underline" }}>
+                  политикой обработки персональных данных
+                </button>
+              </span>
+            </label>
+          )}
+
           {error && <div style={styles.error}>{error}</div>}
 
-          <button style={{ ...styles.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
+          <button style={{ ...styles.btn, opacity: (loading || (mode === "register" && !agreed)) ? 0.6 : 1 }} type="submit" disabled={loading || (mode === "register" && !agreed)}>
             {loading ? "Подождите..." : mode === "register" ? "Зарегистрироваться →" : "Войти →"}
           </button>
         </form>
@@ -103,6 +127,49 @@ export default function AuthPage({ onAuth }: Props) {
           )}
         </div>
       </div>
+
+      {/* Модалка: политика персональных данных */}
+      {showPolicy && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(10,14,39,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
+          onClick={() => setShowPolicy(false)}>
+          <div style={{ background: "#fff", borderRadius: "20px", maxWidth: "560px", width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: "24px 28px 16px", borderBottom: "1px solid #E0E4F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#0A0E27" }}>Политика обработки персональных данных</div>
+              <button onClick={() => setShowPolicy(false)}
+                style={{ background: "none", border: "none", fontSize: "1.3rem", color: "#8B92B8", cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ padding: "20px 28px", overflowY: "auto", fontSize: "0.85rem", color: "#4A5280", lineHeight: 1.7 }}>
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>1. Общие положения</strong><br />
+              Настоящая политика определяет порядок обработки и защиты персональных данных пользователей сервиса BotFlow. Используя сервис, вы соглашаетесь с условиями настоящей политики.</p>
+
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>2. Какие данные мы собираем</strong><br />
+              При регистрации мы собираем: имя, адрес электронной почты и пароль (в зашифрованном виде). В процессе использования сервиса могут сохраняться данные о созданных ботах, диалогах и настройках.</p>
+
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>3. Цели обработки данных</strong><br />
+              Персональные данные используются исключительно для: предоставления доступа к функциям сервиса, идентификации пользователя, улучшения качества работы платформы и технической поддержки.</p>
+
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>4. Хранение и защита</strong><br />
+              Данные хранятся на защищённых серверах. Мы применяем технические и организационные меры для защиты от несанкционированного доступа, изменения или уничтожения данных.</p>
+
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>5. Передача третьим лицам</strong><br />
+              Мы не передаём персональные данные третьим лицам без вашего согласия, за исключением случаев, предусмотренных законодательством Российской Федерации.</p>
+
+              <p style={{ marginBottom: "12px" }}><strong style={{ color: "#0A0E27" }}>6. Права пользователя</strong><br />
+              Вы вправе в любой момент запросить удаление своего аккаунта и всех связанных данных, а также получить информацию о хранящихся персональных данных.</p>
+
+              <p style={{ marginBottom: "0" }}><strong style={{ color: "#0A0E27" }}>7. Контакты</strong><br />
+              По вопросам обработки персональных данных обращайтесь через форму поддержки в личном кабинете.</p>
+            </div>
+            <div style={{ padding: "16px 28px", borderTop: "1px solid #E0E4F0" }}>
+              <button onClick={() => { setAgreed(true); setShowPolicy(false); }}
+                style={{ width: "100%", background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontSize: "0.92rem", fontWeight: 700, cursor: "pointer" }}>
+                Принять и закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
