@@ -566,6 +566,212 @@ const p: Record<string, React.CSSProperties> = {
   saveBtn: { flex: 2, background: "linear-gradient(135deg,#0077FF,#7B61FF)", color: "#fff", border: "none", borderRadius: "10px", padding: "9px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" },
 };
 
+// ─── AI Assistant (floating) ───────────────────────────────────────
+interface AMsg { role: "user" | "assistant"; content: string; action?: string | null; }
+
+const QUICK_PROMPTS = [
+  { icon: "🎯", label: "Записаться к врачу", prompt: "Создай бота для записи пациентов к врачу. Спрашивает специалиста, удобное время, собирает имя и телефон." },
+  { icon: "🛍️", label: "Магазин-консультант", prompt: "Создай бота-консультанта интернет-магазина одежды. Помогает с выбором, отвечает на вопросы о товарах." },
+  { icon: "💆", label: "Запись на услугу", prompt: "Бот для записи в салон красоты: выбор услуги, мастера, времени. Собирает имя и email." },
+  { icon: "📚", label: "FAQ-бот", prompt: "Бот для ответов на частые вопросы о компании: доставка, возврат, оплата, контакты." },
+  { icon: "🤖", label: "Заполнить промпт", prompt: "Заполни AI-промпт для умного ассистента онлайн-школы, который помогает выбрать курс." },
+  { icon: "❓", label: "Как пользоваться?", prompt: "Объясни, что такое узлы в конструкторе и как связать их между собой." },
+];
+
+function AIAssistant({ nodes, edges, prompt, botName, onSetNodes, onSetPrompt, onAddNodes }: {
+  nodes: Node[]; edges: Edge[]; prompt: Prompt; botName: string;
+  onSetNodes: (nodes: Node[], edges: Edge[]) => void;
+  onSetPrompt: (p: Prompt) => void;
+  onAddNodes: (nodes: Node[], edges: Edge[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<AMsg[]>([
+    { role: "assistant", content: "Привет! Я помогу тебе создать бота. Опиши что хочешь — я сгенерирую сценарий, заполню промпт или отвечу на вопросы." }
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 100);
+  }, [open]);
+
+  const send = async (text: string) => {
+    const msg = text.trim();
+    if (!msg || loading) return;
+    setInput("");
+    const newMsgs: AMsg[] = [...messages, { role: "user", content: msg }];
+    setMessages(newMsgs);
+    setLoading(true);
+    setLastAction(null);
+
+    const history = newMsgs.slice(0, -1).map((m) => ({ role: m.role, content: m.content }));
+    const context = { nodes, edges, prompt, botName };
+
+    try {
+      const res = await api.askAssistant(msg, history, context);
+      const action = res.action as string | null;
+      const payload = res.payload;
+
+      setMessages((prev) => [...prev, { role: "assistant", content: res.reply, action }]);
+      setLastAction(action);
+
+      if (action === "set_nodes" && payload?.nodes) {
+        onSetNodes(payload.nodes as Node[], payload.edges as Edge[] ?? []);
+      } else if (action === "add_nodes" && payload?.nodes) {
+        onAddNodes(payload.nodes as Node[], payload.edges as Edge[] ?? []);
+      } else if (action === "set_prompt" && payload) {
+        onSetPrompt({ ...prompt, ...payload });
+      }
+    } catch (e: unknown) {
+      const msg2 = e instanceof Error ? e.message : "Ошибка";
+      setMessages((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg2}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const actionLabel: Record<string, { label: string; color: string; icon: string }> = {
+    set_nodes: { label: "Сценарий обновлён", color: "#00D4AA", icon: "✅" },
+    add_nodes: { label: "Узлы добавлены", color: "#0077FF", icon: "➕" },
+    set_prompt: { label: "Промпт заполнен", color: "#FF6B6B", icon: "🤖" },
+  };
+
+  return (
+    <>
+      {/* Floating button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          position: "fixed", bottom: "28px", right: "28px", zIndex: 1000,
+          width: "56px", height: "56px", borderRadius: "50%", border: "none",
+          background: open ? "#0A0E27" : "linear-gradient(135deg,#7B61FF,#0077FF)",
+          color: "#fff", fontSize: "1.4rem", cursor: "pointer",
+          boxShadow: "0 8px 24px rgba(123,97,255,0.45)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "all 0.25s",
+        }}
+        title="ИИ-помощник"
+      >
+        {open ? "✕" : "✨"}
+      </button>
+
+      {/* Chat window */}
+      {open && (
+        <div style={{
+          position: "fixed", bottom: "96px", right: "28px", zIndex: 999,
+          width: "380px", height: "560px",
+          background: "#fff", borderRadius: "20px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(123,97,255,0.12)",
+          display: "flex", flexDirection: "column", overflow: "hidden",
+          fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+          animation: "slideUp 0.2s ease",
+        }}>
+          {/* Header */}
+          <div style={{ padding: "14px 16px", background: "linear-gradient(135deg,#7B61FF,#0077FF)", display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", flexShrink: 0 }}>✨</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.92rem" }}>ИИ-помощник конструктора</div>
+              <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.7)" }}>GPT-4o · генерирует сценарии и промпты</div>
+            </div>
+            <button onClick={() => setMessages([{ role: "assistant", content: "Привет! Я помогу тебе создать бота. Опиши что хочешь — я сгенерирую сценарий, заполню промпт или отвечу на вопросы." }])}
+              title="Очистить" style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "8px", color: "#fff", cursor: "pointer", padding: "5px 8px", fontSize: "0.75rem" }}>↺</button>
+          </div>
+
+          {/* Quick prompts */}
+          {messages.length <= 1 && (
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid #F0F2F8", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {QUICK_PROMPTS.map((q) => (
+                <button key={q.label} onClick={() => send(q.prompt)}
+                  style={{ background: "#F4F6FF", border: "1.5px solid #E0E4F0", borderRadius: "20px", padding: "5px 10px", fontSize: "0.73rem", fontWeight: 600, color: "#4A5280", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}>
+                  {q.icon} {q.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Messages */}
+          <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column", gap: "12px", background: "#F8F9FF" }}>
+            {messages.map((msg, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: "8px", alignItems: "flex-end" }}>
+                {msg.role === "assistant" && (
+                  <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg,#7B61FF,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>✨</div>
+                )}
+                <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", gap: "4px", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                  <div style={{
+                    background: msg.role === "user" ? "linear-gradient(135deg,#7B61FF,#0077FF)" : "#fff",
+                    color: msg.role === "user" ? "#fff" : "#0A0E27",
+                    borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    padding: "10px 13px", fontSize: "0.84rem", lineHeight: 1.55,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    whiteSpace: "pre-wrap",
+                  }}>
+                    {msg.content}
+                  </div>
+                  {msg.action && actionLabel[msg.action] && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.7rem", color: actionLabel[msg.action].color, fontWeight: 700, paddingLeft: "4px" }}>
+                      {actionLabel[msg.action].icon} {actionLabel[msg.action].label} — применено в конструкторе
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg,#7B61FF,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem" }}>✨</div>
+                <div style={{ background: "#fff", borderRadius: "16px 16px 16px 4px", padding: "12px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    {[0,1,2].map((i) => <div key={i} style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#7B61FF", animation: `bounce 1.2s ${i*0.2}s infinite`, opacity: 0.6 }} />)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action banner */}
+          {lastAction && actionLabel[lastAction] && (
+            <div style={{ padding: "6px 14px", background: `${actionLabel[lastAction].color}11`, borderTop: `1px solid ${actionLabel[lastAction].color}33`, fontSize: "0.73rem", color: actionLabel[lastAction].color, fontWeight: 600 }}>
+              {actionLabel[lastAction].icon} {actionLabel[lastAction].label} · проверь конструктор
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{ padding: "12px", borderTop: "1px solid #E0E4F0", display: "flex", gap: "8px", background: "#fff" }}>
+            <input
+              ref={inputRef}
+              style={{ flex: 1, padding: "10px 14px", border: "1.5px solid #E0E4F0", borderRadius: "22px", fontSize: "0.87rem", outline: "none", color: "#0A0E27", background: "#F8F9FF" }}
+              placeholder="Опиши бота или задай вопрос..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send(input)}
+              disabled={loading}
+            />
+            <button onClick={() => send(input)} disabled={!input.trim() || loading}
+              style={{
+                width: "40px", height: "40px", borderRadius: "50%", border: "none",
+                background: input.trim() && !loading ? "linear-gradient(135deg,#7B61FF,#0077FF)" : "#E0E4F0",
+                color: "#fff", fontSize: "1rem", cursor: input.trim() && !loading ? "pointer" : "default",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>
+              ➤
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+      `}</style>
+    </>
+  );
+}
+
 // ─── Chat Test Panel ───────────────────────────────────────────────
 interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; special?: "email_saved" | "email_error"; }
 
@@ -1147,6 +1353,31 @@ export default function BotBuilder({ botId, onBack }: Props) {
           />
         )}
       </div>
+
+      {/* ИИ-помощник конструктора */}
+      <AIAssistant
+        nodes={nodes}
+        edges={edges}
+        prompt={prompt}
+        botName={bot?.name ?? ""}
+        onSetNodes={(newNodes, newEdges) => {
+          setNodes(newNodes);
+          setEdges(newEdges);
+          setSelected(null);
+          setEditNode(null);
+          setRightPanel(null);
+        }}
+        onAddNodes={(addN, addE) => {
+          const offset = nodes.length * 0;
+          const shifted = addN.map((n) => ({ ...n, x: n.x + offset, y: n.y + offset }));
+          setNodes((prev) => [...prev, ...shifted]);
+          setEdges((prev) => [...prev, ...addE]);
+        }}
+        onSetPrompt={(p) => {
+          setPrompt(p);
+          setRightPanel("prompt");
+        }}
+      />
     </div>
   );
 }

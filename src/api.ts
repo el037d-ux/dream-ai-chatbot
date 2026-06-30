@@ -2,6 +2,7 @@ const AUTH_URL = "https://functions.poehali.dev/2f65484d-2036-4c51-b6f3-e01cc65d
 const BOTS_URL = "https://functions.poehali.dev/3a31590d-66a8-4a32-8018-9180fb2e6cb3";
 const LEADS_URL = "https://functions.poehali.dev/96aa177e-abc9-4ba3-ad48-bbf935357753";
 const AI_URL = "https://functions.poehali.dev/fa4308f7-059d-4404-aca1-10cfeb46e8ff";
+const AI_ASSISTANT_URL = "https://functions.poehali.dev/17e10c45-10e7-4ed3-af8e-8168e7fa6e23";
 
 function getToken() {
   return localStorage.getItem("bf_token") || "";
@@ -49,4 +50,7 @@ export const api = {
 
   askAI: (messages: { role: string; content: string }[], prompt: object) =>
     req(AI_URL, "POST", { messages, prompt, model: "gpt-4o-mini", max_tokens: 500 }),
+
+  askAssistant: (message: string, history: { role: string; content: string }[], context: object) =>
+    req(AI_ASSISTANT_URL, "POST", { message, history, context }),
 };
