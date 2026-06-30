@@ -7,8 +7,8 @@ CORS = {
     "Access-Control-Allow-Headers": "Content-Type, X-Auth-Token",
 }
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+API_URL = "https://api.aitunnel.ru/v1/chat/completions"
+DEFAULT_MODEL = "gpt-4o-mini"
 
 def ok(data): return {"statusCode": 200, "headers": CORS, "body": json.dumps(data, ensure_ascii=False)}
 def err(msg, code=400): return {"statusCode": code, "headers": CORS, "body": json.dumps({"error": msg})}
@@ -71,7 +71,7 @@ def build_system_prompt(prompt: dict) -> str:
     return "\n\n".join(parts) if parts else "Ты — полезный ассистент. Отвечай на русском языке."
 
 
-def call_groq(messages: list, api_key: str, model: str, max_tokens: int) -> dict:
+def call_api(messages: list, api_key: str, model: str, max_tokens: int) -> dict:
     payload = json.dumps({
         "model": model,
         "messages": messages,
@@ -79,7 +79,7 @@ def call_groq(messages: list, api_key: str, model: str, max_tokens: int) -> dict
         "temperature": 0.7,
     }).encode("utf-8")
     req = urllib.request.Request(
-        GROQ_URL, data=payload,
+        API_URL, data=payload,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
@@ -91,11 +91,9 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
-        return err("GROQ_API_KEY не настроен", 500)
-    if not api_key.startswith("gsk_"):
-        return err(f"GROQ_API_KEY неверный формат (ожидается gsk_...), получено: {api_key[:8]!r}", 500)
+        return err("OPENAI_API_KEY не настроен", 500)
 
     body = json.loads(event.get("body") or "{}")
     messages_in = body.get("messages", [])
@@ -114,14 +112,14 @@ def handler(event: dict, context) -> dict:
     ]
 
     try:
-        data = call_groq(groq_messages, api_key, model, max_tokens)
+        data = call_api(groq_messages, api_key, model, max_tokens)
         reply = data["choices"][0]["message"]["content"].strip()
         usage = data.get("usage", {})
         return ok({"reply": reply, "usage": usage, "model": model})
     except urllib.error.HTTPError as e:
         body_err = e.read().decode("utf-8", errors="replace")
         err_data = json.loads(body_err) if body_err.startswith("{") else {}
-        msg = err_data.get("error", {}).get("message", f"Groq HTTP {e.code}")
-        return err(f"Groq: {msg}", 502)
+        msg = err_data.get("error", {}).get("message", f"HTTP {e.code}")
+        return err(f"AI: {msg}", 502)
     except Exception as ex:
         return err(f"Ошибка: {str(ex)}", 500)
