@@ -94,8 +94,17 @@ def handler(event: dict, context) -> dict:
         cur.execute("""SELECT node_id, type, label, message, pos_x, pos_y,
             COALESCE(var_name,''), COALESCE(validate,false), COALESCE(error_msg,''), COALESCE(extra,'{}')
             FROM bot_nodes WHERE bot_id=%s""", (bot_id,))
-        nodes = [{"id": n[0], "type": n[1], "label": n[2], "message": n[3], "x": n[4], "y": n[5],
-                  "varName": n[6], "validate": bool(n[7]), "errorMsg": n[8], "extra": n[9]} for n in cur.fetchall()]
+        nodes = []
+        for n in cur.fetchall():
+            extra = n[9] if isinstance(n[9], dict) else {}
+            nodes.append({
+                "id": n[0], "type": n[1], "label": n[2], "message": n[3], "x": n[4], "y": n[5],
+                "varName": n[6], "validate": bool(n[7]), "errorMsg": n[8],
+                "webhookUrl": extra.get("webhookUrl", ""),
+                "webhookMethod": extra.get("webhookMethod", "POST"),
+                "webhookSecret": extra.get("webhookSecret", ""),
+                "buttons": extra.get("buttons", []),
+            })
         cur.execute("SELECT edge_id, source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s", (bot_id,))
         edges = [{"id": e[0], "source": e[1], "target": e[2]} for e in cur.fetchall()]
         conn.close()
@@ -127,6 +136,7 @@ def handler(event: dict, context) -> dict:
             if n.get("webhookUrl"): extra["webhookUrl"] = n["webhookUrl"]
             if n.get("webhookMethod"): extra["webhookMethod"] = n["webhookMethod"]
             if n.get("webhookSecret"): extra["webhookSecret"] = n["webhookSecret"]
+            if n.get("buttons"): extra["buttons"] = n["buttons"]
             cur.execute("""INSERT INTO bot_nodes
                 (bot_id, node_id, type, label, message, pos_x, pos_y, var_name, validate, error_msg, extra)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)

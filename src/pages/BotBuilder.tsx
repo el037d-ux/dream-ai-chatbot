@@ -17,6 +17,8 @@ interface Node {
   webhookUrl?: string;
   webhookMethod?: string;
   webhookSecret?: string;
+  // Кнопки ВК / чат-теста
+  buttons?: string[];
 }
 interface Edge { id: string; source: string; target: string; }
 interface Prompt {
@@ -178,17 +180,27 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
   const [webhookUrl, setWebhookUrl] = useState(node.webhookUrl || "");
   const [webhookMethod, setWebhookMethod] = useState(node.webhookMethod || "POST");
   const [webhookSecret, setWebhookSecret] = useState(node.webhookSecret || "");
+  const [buttons, setButtons] = useState<string[]>(node.buttons || []);
+  const [newBtn, setNewBtn] = useState("");
 
   useEffect(() => {
     setLabel(node.label); setMessage(node.message); setType(node.type);
     setVarName(node.varName || ""); setValidate(node.validate ?? true);
     setErrorMsg(node.errorMsg || ""); setWebhookUrl(node.webhookUrl || "");
     setWebhookMethod(node.webhookMethod || "POST"); setWebhookSecret(node.webhookSecret || "");
+    setButtons(node.buttons || []); setNewBtn("");
   }, [node.id]);
 
   const nStyle = getNodeStyle(type);
 
-  const save = () => onSave({ ...node, label, message, type, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret });
+  const addBtn = () => {
+    const t = newBtn.trim();
+    if (!t || buttons.includes(t) || buttons.length >= 10) return;
+    setButtons((prev) => [...prev, t]);
+    setNewBtn("");
+  };
+
+  const save = () => onSave({ ...node, label, message, type, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret, buttons });
 
   return (
     <div style={{ ...p.panel, width: "320px" }}>
@@ -276,6 +288,46 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
           <div style={{ background: "rgba(255,184,0,0.06)", border: "1.5px solid rgba(255,184,0,0.2)", borderRadius: "12px", padding: "12px", fontSize: "0.78rem", color: "#8B92B8", lineHeight: 1.5 }}>
             <span style={{ fontWeight: 700, color: "#B8860B" }}>💡 Подсказка:</span> в поле «Название» укажите ключевые слова через запятую — когда пользователь напишет одно из них, бот пойдёт по этой ветке.
             <div style={{ marginTop: "6px" }}>Пример: <span style={{ fontFamily: "monospace", color: "#FFB800" }}>да,конечно,хочу</span></div>
+          </div>
+        )}
+
+        {/* КНОПКИ — для trigger / message / email узлов */}
+        {(type === "trigger" || type === "message" || type === "email") && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "rgba(0,119,255,0.04)", border: "1.5px solid rgba(0,119,255,0.15)", borderRadius: "12px", padding: "12px" }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0077FF", display: "flex", alignItems: "center", gap: "6px" }}>
+              💙 Кнопки ВКонтакте
+              <span style={{ fontWeight: 400, color: "#8B92B8", fontSize: "0.7rem" }}>(до 10 штук)</span>
+            </div>
+            {/* Список добавленных кнопок */}
+            {buttons.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {buttons.map((btn, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", background: "#fff", border: "1.5px solid #0077FF33", borderRadius: "8px", padding: "4px 8px 4px 10px", fontSize: "0.8rem", color: "#0A0E27" }}>
+                    <span>{btn}</span>
+                    <button onClick={() => setButtons((prev) => prev.filter((_, j) => j !== i))}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "0.9rem", padding: "0 2px", lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Добавить кнопку */}
+            {buttons.length < 10 && (
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  style={{ ...p.input, flex: 1, fontSize: "0.83rem" }}
+                  placeholder="Текст кнопки..."
+                  value={newBtn}
+                  onChange={(e) => setNewBtn(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addBtn()}
+                  maxLength={40}
+                />
+                <button onClick={addBtn} disabled={!newBtn.trim()}
+                  style={{ background: newBtn.trim() ? "#0077FF" : "#E0E4F0", border: "none", borderRadius: "9px", padding: "0 14px", color: "#fff", fontWeight: 700, cursor: newBtn.trim() ? "pointer" : "default", fontSize: "1rem" }}>+</button>
+              </div>
+            )}
+            <div style={{ fontSize: "0.7rem", color: "#8B92B8", lineHeight: 1.4 }}>
+              Кнопки отображаются под сообщением в ВК. Нажатие на кнопку = отправка её текста боту.
+            </div>
           </div>
         )}
 
@@ -773,7 +825,7 @@ function AIAssistant({ nodes, edges, prompt, botName, onSetNodes, onSetPrompt, o
 }
 
 // ─── Chat Test Panel ───────────────────────────────────────────────
-interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; special?: "email_saved" | "email_error"; }
+interface ChatMsg { from: "user" | "bot"; text: string; nodeId?: string; special?: "email_saved" | "email_error"; buttons?: string[]; }
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -797,8 +849,22 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
 
   const startNode = nodes.find((n) => n.type === "trigger");
 
-  const addBotMsg = (text: string, nodeId?: string, special?: ChatMsg["special"]) =>
-    setMessages((prev) => [...prev, { from: "bot", text, nodeId, special }]);
+  const addBotMsg = (text: string, nodeId?: string, special?: ChatMsg["special"], buttons?: string[]) =>
+    setMessages((prev) => [...prev, { from: "bot", text, nodeId, special, buttons }]);
+
+  // Вычислить кнопки для узла: либо его собственные, либо из condition-потомков
+  const getNodeButtons = (nodeId: string): string[] => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (node?.buttons?.length) return node.buttons;
+    const nextEdges = edges.filter((e) => e.source === nodeId);
+    const conditions = nextEdges
+      .map((e) => nodes.find((n) => n.id === e.target))
+      .filter((n) => n?.type === "condition") as Node[];
+    if (conditions.length) {
+      return conditions.map((c) => c.label.split(",")[0].trim()).filter(Boolean).slice(0, 10);
+    }
+    return [];
+  };
 
   const reset = () => {
     setMessages([]);
@@ -812,7 +878,14 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
     setAiError("");
     if (startNode) {
       setTimeout(() => {
-        addBotMsg(startNode.message || "Привет! Чем могу помочь?", startNode.id);
+        const btns = startNode.buttons?.length
+          ? startNode.buttons
+          : edges.filter((e) => e.source === startNode.id)
+              .map((e) => nodes.find((n) => n.id === e.target))
+              .filter((n) => n?.type === "condition")
+              .map((n) => (n as Node).label.split(",")[0].trim())
+              .filter(Boolean).slice(0, 10);
+        addBotMsg(startNode.message || "Привет! Чем могу помочь?", startNode.id, undefined, btns.length ? btns : undefined);
         setCurrentNodeId(startNode.id);
       }, 300);
     }
@@ -960,16 +1033,21 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
       if (next) {
         if (next.type === "email") { handleEmailNode(next); return; }
         if (next.type === "ai") { handleAINode(next, newMsgs); return; }
-        addBotMsg(next.message || `[${next.label}]`, next.id);
+        const btns = getNodeButtons(next.id);
+        addBotMsg(next.message || `[${next.label}]`, next.id, undefined, btns.length ? btns : undefined);
         setCurrentNodeId(next.id);
-        const afterNext = getNextNode(next.id);
-        if (afterNext && afterNext.type !== "trigger" && afterNext.type !== "condition") {
-          setTimeout(() => {
-            if (afterNext.type === "email") { handleEmailNode(afterNext); return; }
-            if (afterNext.type === "ai") { handleAINode(afterNext, newMsgs); return; }
-            addBotMsg(afterNext.message || `[${afterNext.label}]`, afterNext.id);
-            setCurrentNodeId(afterNext.id);
-          }, 600);
+        // Автоматический следующий узел (если нет кнопок и нет condition)
+        if (!btns.length) {
+          const afterNext = getNextNode(next.id);
+          if (afterNext && afterNext.type !== "trigger" && afterNext.type !== "condition") {
+            setTimeout(() => {
+              if (afterNext.type === "email") { handleEmailNode(afterNext); return; }
+              if (afterNext.type === "ai") { handleAINode(afterNext, newMsgs); return; }
+              const afterBtns = getNodeButtons(afterNext.id);
+              addBotMsg(afterNext.message || `[${afterNext.label}]`, afterNext.id, undefined, afterBtns.length ? afterBtns : undefined);
+              setCurrentNodeId(afterNext.id);
+            }, 600);
+          }
         }
       } else {
         addBotMsg("Не совсем понял. Попробуйте переформулировать.");
@@ -1043,6 +1121,38 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
               }}>
                 {msg.text}
               </div>
+              {/* Кнопки быстрых ответов */}
+              {msg.from === "bot" && msg.buttons && msg.buttons.length > 0 && i === messages.length - 1 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "4px" }}>
+                  {msg.buttons.map((btn) => (
+                    <button key={btn} onClick={() => {
+                      setTimeout(() => {
+                        setInput("");
+                        const newMsgs: ChatMsg[] = [...messages, { from: "user", text: btn }];
+                        setMessages(newMsgs);
+                        setThinking(true);
+                        setTimeout(() => {
+                          setThinking(false);
+                          const next = findMatchingNode(btn, currentNodeId);
+                          if (next) {
+                            if (next.type === "email") { handleEmailNode(next); return; }
+                            if (next.type === "ai") { handleAINode(next, newMsgs); return; }
+                            const btns2 = getNodeButtons(next.id);
+                            addBotMsg(next.message || `[${next.label}]`, next.id, undefined, btns2.length ? btns2 : undefined);
+                            setCurrentNodeId(next.id);
+                          }
+                        }, 600 + Math.random() * 200);
+                      }, 0);
+                    }}
+                      style={{ background: "#fff", border: "1.5px solid #0077FF44", borderRadius: "16px", padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#0077FF", cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.background = "#0077FF"; (e.target as HTMLButtonElement).style.color = "#fff"; }}
+                      onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.background = "#fff"; (e.target as HTMLButtonElement).style.color = "#0077FF"; }}
+                    >
+                      {btn}
+                    </button>
+                  ))}
+                </div>
+              )}
               {msg.nodeId && (
                 <div style={{ fontSize: "0.65rem", color: "#C8CEE0", paddingLeft: "4px" }}>
                   узел: {nodes.find((n) => n.id === msg.nodeId)?.label}
