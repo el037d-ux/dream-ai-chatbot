@@ -454,20 +454,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="lp-cta">
-        <div className="lp-container">
-          <div className="lp-cta-inner">
-            <h2>Готовы автоматизировать общение с клиентами?</h2>
-            <p>Присоединяйтесь к 12 000+ компаниям, которые уже используют BotFlow</p>
-            <div className="lp-cta-btns">
-              <button className="lp-btn lp-btn-primary lp-btn-lg" onClick={onRegister}>Создать бота бесплатно →</button>
-              <a href="#how" className="lp-btn lp-btn-outline lp-btn-lg">Записаться на демо</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FOOTER */}
       <footer className="lp-footer">
         <div className="lp-container">
