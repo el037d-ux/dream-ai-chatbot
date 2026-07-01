@@ -310,7 +310,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
               <p className="lp-hero-sub">SaaS-платформа для разработки умных ботов с визуальным конструктором, готовыми сценариями и полной интеграцией VK API. Запуск за 15 минут.</p>
               <div className="lp-hero-cta">
                 <button className="lp-btn lp-btn-primary lp-btn-lg" onClick={onRegister}>Начать бесплатно →</button>
-                <a href="#how" className="lp-btn lp-btn-outline lp-btn-lg">▶ Смотреть демо</a>
               </div>
               <div className="lp-hero-stats">
                 {[["12K+","Активных ботов"],["98%","Uptime"],["4.9★","Оценка клиентов"]].map(([v,l])=>(
@@ -347,7 +346,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
           <div className="lp-sec-hdr">
             <div className="lp-tag">Возможности</div>
             <h2 className="lp-sec-title">Всё, что нужно для бота мечты</h2>
-            <p className="lp-sec-sub">От простого автоответчика до сложной CRM-системы с AI — в одном месте</p>
           </div>
           <div className="lp-feat-grid">
             {[
