@@ -323,15 +323,16 @@ def handler(event: dict, context) -> dict:
 
     bot_id, access_token, secret_key, confirm_code, active = row
 
+    # Подтверждение сервера — ВК НЕ присылает secret в этом запросе,
+    # поэтому проверку кода делаем ДО проверки секретного ключа
+    if event_type == "confirmation":
+        conn.close()
+        return ok((confirm_code or "").strip())
+
     # Проверка секретного ключа
     if secret_key and body.get("secret", "") != secret_key:
         conn.close()
         return ok("ok")
-
-    # Подтверждение сервера
-    if event_type == "confirmation":
-        conn.close()
-        return ok(confirm_code)
 
     if not active:
         conn.close()
