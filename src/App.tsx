@@ -39,9 +39,6 @@ export default function App() {
     }
     api.me().then((d) => {
       setUser(d.user);
-      if (!savedScreen || savedScreen === "landing" || savedScreen === "auth") {
-        setScreen("dashboard");
-      }
     }).catch(() => {
       localStorage.removeItem("bf_token");
       setScreen("landing");
@@ -81,5 +78,5 @@ export default function App() {
   if (screen === "auth") {
     return <AuthPage onAuth={onAuth} />;
   }
-  return <LandingPage onRegister={() => setScreen("auth")} onLogin={() => setScreen("auth")} />;
+  return <LandingPage onRegister={() => setScreen(user ? "dashboard" : "auth")} onLogin={() => setScreen(user ? "dashboard" : "auth")} />;
 }
