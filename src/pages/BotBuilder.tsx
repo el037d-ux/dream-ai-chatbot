@@ -133,6 +133,15 @@ function NodeCard({ node, selected, connecting, connectingActive, onSelect, onMo
           {node.message}
         </div>
       )}
+      {node.buttons && node.buttons.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "8px", maxWidth: "210px" }}>
+          {node.buttons.map((btn, i) => (
+            <div key={i} style={{ fontSize: "0.72rem", fontWeight: 600, color: "#0077FF", background: "rgba(0,119,255,0.08)", border: "1px solid rgba(0,119,255,0.25)", borderRadius: "14px", padding: "3px 10px", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {btn}
+            </div>
+          ))}
+        </div>
+      )}
       {/* Нижняя точка — начало соединения */}
       <div
         title="Кликни, затем кликни на другой узел"
@@ -185,6 +194,8 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
   const [webhookSecret, setWebhookSecret] = useState(node.webhookSecret || "");
   const [buttons, setButtons] = useState<string[]>(node.buttons || []);
   const [newBtn, setNewBtn] = useState("");
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editVal, setEditVal] = useState("");
   // Для action-узла: подтип действия — webhook или email
   const [actionSubtype, setActionSubtype] = useState<"webhook" | "email">(
     node.type === "email" ? "email" : "webhook"
@@ -200,6 +211,7 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
     setErrorMsg(node.errorMsg || ""); setWebhookUrl(node.webhookUrl || "");
     setWebhookMethod(node.webhookMethod || "POST"); setWebhookSecret(node.webhookSecret || "");
     setButtons(node.buttons || []); setNewBtn("");
+    setEditIdx(null); setEditVal("");
   }, [node.id]);
 
   // Реальный тип для сохранения: action с подтипом email → тип "email"
@@ -331,7 +343,27 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {buttons.map((btn, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", background: "#fff", border: "1.5px solid #0077FF33", borderRadius: "8px", padding: "4px 8px 4px 10px", fontSize: "0.8rem", color: "#0A0E27" }}>
-                    <span>{btn}</span>
+                    {editIdx === i ? (
+                      <input
+                        autoFocus
+                        style={{ border: "none", outline: "none", fontSize: "0.8rem", background: "transparent", width: `${Math.max(editVal.length, 4)}ch`, color: "#0A0E27" }}
+                        value={editVal}
+                        maxLength={40}
+                        onChange={(e) => setEditVal(e.target.value)}
+                        onBlur={() => {
+                          const v = editVal.trim();
+                          if (v) setButtons((prev) => prev.map((b, j) => (j === i ? v : b)));
+                          setEditIdx(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          if (e.key === "Escape") setEditIdx(null);
+                        }}
+                      />
+                    ) : (
+                      <span style={{ cursor: "text" }} title="Нажми, чтобы изменить"
+                        onClick={() => { setEditIdx(i); setEditVal(btn); }}>{btn}</span>
+                    )}
                     <button onClick={() => setButtons((prev) => prev.filter((_, j) => j !== i))}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#8B92B8", fontSize: "0.9rem", padding: "0 2px", lineHeight: 1 }}>✕</button>
                   </div>
