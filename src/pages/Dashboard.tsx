@@ -36,7 +36,7 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
   const [selectedBotForVk, setSelectedBotForVk] = useState<number | null>(null);
   const [vkStatus, setVkStatus] = useState<VkStatus | null>(null);
   const [vkLoading, setVkLoading] = useState(false);
-  const [vkForm, setVkForm] = useState({ accessToken: "", groupId: "", secretKey: "" });
+  const [vkForm, setVkForm] = useState({ accessToken: "", groupId: "", secretKey: "", confirmCode: "" });
   const [vkSaving, setVkSaving] = useState(false);
   const [vkError, setVkError] = useState("");
 
@@ -122,17 +122,25 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
   const connectVk = async () => {
     if (!selectedBotForVk) return;
     if (!vkForm.accessToken || !vkForm.groupId) { setVkError("Заполните токен и ID группы"); return; }
+    if (!vkForm.confirmCode) { setVkError("Укажите строку подтверждения из настроек ВК"); return; }
     setVkSaving(true);
     setVkError("");
     try {
-      const d = await api.vkConnect(selectedBotForVk, vkForm.accessToken, parseInt(vkForm.groupId), vkForm.secretKey);
-      setVkStatus({ connected: true, confirm_code: d.confirm_code, group_name: d.group_name, active: true });
-      setVkForm({ accessToken: "", groupId: "", secretKey: "" });
+      const gid = parseInt(vkForm.groupId);
+      const d = await api.vkConnect(selectedBotForVk, vkForm.accessToken, gid, vkForm.secretKey, vkForm.confirmCode.trim());
+      setVkStatus({ connected: true, group_id: gid, confirm_code: d.confirm_code, group_name: d.group_name, secret_key: vkForm.secretKey, active: true });
+      setVkForm({ accessToken: "", groupId: "", secretKey: "", confirmCode: "" });
     } catch (e: unknown) {
       setVkError(e instanceof Error ? e.message : "Ошибка подключения");
     } finally {
       setVkSaving(false);
     }
+  };
+
+  const setVkConfirm = async (code: string) => {
+    if (!selectedBotForVk || !code.trim()) return;
+    await api.vkSetConfirm(selectedBotForVk, code.trim());
+    setVkStatus((st) => st ? { ...st, confirm_code: code.trim() } : st);
   };
 
   const toggleVk = async () => {
@@ -240,6 +248,7 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
             onSetVkForm={setVkForm}
             onConnectVk={connectVk}
             onToggleVk={toggleVk}
+            onSetVkConfirm={setVkConfirm}
           />
         )}
       </main>

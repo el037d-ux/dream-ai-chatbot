@@ -75,10 +75,14 @@ def handler(event: dict, context) -> dict:
         access_token = (body.get("access_token") or "").strip()
         group_id = int(body.get("group_id", 0))
         secret_key = (body.get("secret_key") or "").strip()
+        confirm_code = (body.get("confirm_code") or "").strip()
 
         if not bot_id or not access_token or not group_id:
             conn.close()
             return err("Укажите bot_id, access_token и group_id")
+        if not confirm_code:
+            conn.close()
+            return err("Укажите строку подтверждения из настроек Callback API ВКонтакте")
 
         cur.execute("SELECT id FROM bots WHERE id=%s AND user_id=%s", (bot_id, user_id))
         if not cur.fetchone():
@@ -94,10 +98,6 @@ def handler(event: dict, context) -> dict:
         except Exception:
             pass
 
-        # Генерируем confirm_code — уникальная строка для верификации Callback
-        import hashlib, time
-        confirm_code = hashlib.md5(f"{bot_id}:{group_id}:{time.time()}".encode()).hexdigest()[:16]
-
         cur.execute("""INSERT INTO vk_integrations (bot_id, group_id, group_name, access_token, secret_key, confirm_code, active)
             VALUES (%s,%s,%s,%s,%s,%s,true)
             ON CONFLICT (bot_id) DO UPDATE SET
@@ -108,6 +108,21 @@ def handler(event: dict, context) -> dict:
         conn.commit()
         conn.close()
         return ok({"ok": True, "confirm_code": confirm_code, "group_name": group_name})
+
+    # POST ?action=set_confirm — обновить строку подтверждения из ВК
+    if action == "set_confirm":
+        body = json.loads(event.get("body") or "{}")
+        bot_id = int(body.get("bot_id", 0))
+        confirm_code = (body.get("confirm_code") or "").strip()
+        if not bot_id or not confirm_code:
+            conn.close()
+            return err("Укажите bot_id и строку подтверждения")
+        cur.execute("""UPDATE vk_integrations SET confirm_code=%s, updated_at=NOW()
+            WHERE bot_id=%s AND bot_id IN (SELECT id FROM bots WHERE user_id=%s)""",
+            (confirm_code, bot_id, user_id))
+        conn.commit()
+        conn.close()
+        return ok({"ok": True, "confirm_code": confirm_code})
 
     # POST ?action=toggle — включить/выключить
     if action == "toggle":

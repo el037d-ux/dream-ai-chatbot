@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bot, VkStatus, s } from "./types";
 import { VK_BOT_URL } from "@/api";
 
@@ -5,21 +6,23 @@ interface Props {
   bots: Bot[];
   vkStatus: VkStatus | null;
   vkLoading: boolean;
-  vkForm: { accessToken: string; groupId: string; secretKey: string };
+  vkForm: { accessToken: string; groupId: string; secretKey: string; confirmCode: string };
   vkSaving: boolean;
   vkError: string;
   selectedBotId: number | null;
   onLoadVkStatus: (id: number) => void;
   onBack: () => void;
-  onSetVkForm: (v: { accessToken: string; groupId: string; secretKey: string }) => void;
+  onSetVkForm: (v: { accessToken: string; groupId: string; secretKey: string; confirmCode: string }) => void;
   onConnectVk: () => void;
   onToggleVk: () => void;
+  onSetVkConfirm: (code: string) => void;
 }
 
 export default function VkTab({
   bots, vkStatus, vkLoading, vkForm, vkSaving, vkError, selectedBotId,
-  onLoadVkStatus, onBack, onSetVkForm, onConnectVk, onToggleVk,
+  onLoadVkStatus, onBack, onSetVkForm, onConnectVk, onToggleVk, onSetVkConfirm,
 }: Props) {
+  const [editCode, setEditCode] = useState("");
   return (
     <>
       <div style={s.header}>
@@ -91,6 +94,19 @@ export default function VkTab({
                   🔑 Секретный ключ настроен — укажи его в поле «Секретный ключ» в настройках Callback API ВК
                 </div>
               )}
+              <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #E8EBF5" }}>
+                <div style={{ fontSize: "0.78rem", color: "#8B92B8", marginBottom: "6px" }}>ВК показал другую строку подтверждения? Обнови её здесь:</div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    style={{ flex: 1, padding: "8px 12px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.84rem", outline: "none", boxSizing: "border-box" as const, background: "#FAFBFF" }}
+                    placeholder="например: b8261209"
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value)}
+                  />
+                  <button onClick={() => { onSetVkConfirm(editCode); setEditCode(""); }} disabled={!editCode.trim()}
+                    style={{ background: editCode.trim() ? "linear-gradient(135deg,#0077FF,#00A8FF)" : "#E0E4F0", color: "#fff", border: "none", borderRadius: "10px", padding: "8px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: editCode.trim() ? "pointer" : "default", flexShrink: 0 }}>Сохранить</button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -131,6 +147,18 @@ export default function VkTab({
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
+                  Строка подтверждения
+                </label>
+                <input
+                  style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #E0E4F0", borderRadius: "10px", fontSize: "0.88rem", outline: "none", boxSizing: "border-box" as const, background: "#FAFBFF" }}
+                  placeholder="например: b8261209"
+                  value={vkForm.confirmCode}
+                  onChange={(e) => onSetVkForm({ ...vkForm, confirmCode: e.target.value })}
+                />
+                <div style={{ fontSize: "0.72rem", color: "#8B92B8", marginTop: "4px" }}>Управление → Работа с API → Callback API → поле «Строка, которую должен вернуть сервер»</div>
+              </div>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
                   Секретный ключ (необязательно)
                 </label>
                 <input
@@ -144,8 +172,8 @@ export default function VkTab({
 
               {vkError && <div style={{ padding: "10px 14px", background: "#fff0f0", borderRadius: "10px", color: "#d63031", fontSize: "0.84rem" }}>⚠️ {vkError}</div>}
 
-              <button onClick={onConnectVk} disabled={vkSaving || !vkForm.accessToken || !vkForm.groupId}
-                style={{ background: vkSaving || !vkForm.accessToken || !vkForm.groupId ? "#E0E4F0" : "linear-gradient(135deg,#0077FF,#00A8FF)", color: "#fff", border: "none", borderRadius: "12px", padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={onConnectVk} disabled={vkSaving || !vkForm.accessToken || !vkForm.groupId || !vkForm.confirmCode}
+                style={{ background: vkSaving || !vkForm.accessToken || !vkForm.groupId || !vkForm.confirmCode ? "#E0E4F0" : "linear-gradient(135deg,#0077FF,#00A8FF)", color: "#fff", border: "none", borderRadius: "12px", padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer" }}>
                 {vkSaving ? "Подключаю..." : "💙 Подключить сообщество"}
               </button>
             </div>

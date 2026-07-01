@@ -60,8 +60,10 @@ export const api = {
 
   vkStatus: (botId: number) =>
     req(`${VK_CONNECT_URL}?action=status&bot_id=${botId}`, "GET", undefined, true),
-  vkConnect: (botId: number, accessToken: string, groupId: number, secretKey: string) =>
-    req(`${VK_CONNECT_URL}?action=connect`, "POST", { bot_id: botId, access_token: accessToken, group_id: groupId, secret_key: secretKey }, true),
+  vkConnect: (botId: number, accessToken: string, groupId: number, secretKey: string, confirmCode: string) =>
+    req(`${VK_CONNECT_URL}?action=connect`, "POST", { bot_id: botId, access_token: accessToken, group_id: groupId, secret_key: secretKey, confirm_code: confirmCode }, true),
+  vkSetConfirm: (botId: number, confirmCode: string) =>
+    req(`${VK_CONNECT_URL}?action=set_confirm`, "POST", { bot_id: botId, confirm_code: confirmCode }, true),
   vkToggle: (botId: number, active: boolean) =>
     req(`${VK_CONNECT_URL}?action=toggle`, "POST", { bot_id: botId, active }, true),
   vkDisconnect: (botId: number) =>
