@@ -9,9 +9,7 @@ type Screen = "landing" | "auth" | "dashboard" | "builder";
 interface User { id: number; email: string; name: string; }
 
 export default function App() {
-  const [screen, setScreenState] = useState<Screen>(
-    () => (localStorage.getItem("bf_screen") as Screen) || "landing"
-  );
+  const [screen, setScreenState] = useState<Screen>("landing");
   const [user, setUser] = useState<User | null>(null);
   const [botId, setBotIdState] = useState<number | null>(() => {
     const v = localStorage.getItem("bf_bot_id");
@@ -20,7 +18,6 @@ export default function App() {
   const [checking, setChecking] = useState(true);
 
   const setScreen = (s: Screen) => {
-    localStorage.setItem("bf_screen", s);
     setScreenState(s);
   };
   const setBotId = (id: number | null) => {
@@ -31,9 +28,7 @@ export default function App() {
 
   useEffect(() => {
     const token = localStorage.getItem("bf_token");
-    const savedScreen = localStorage.getItem("bf_screen") as Screen | null;
     if (!token) {
-      if (savedScreen && savedScreen !== "landing" && savedScreen !== "auth") setScreen("landing");
       setChecking(false);
       return;
     }
@@ -41,7 +36,6 @@ export default function App() {
       setUser(d.user);
     }).catch(() => {
       localStorage.removeItem("bf_token");
-      setScreen("landing");
     }).finally(() => setChecking(false));
   }, []);
 
