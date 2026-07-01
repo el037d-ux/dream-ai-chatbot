@@ -307,7 +307,7 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
             <div>
               <div className="lp-badge">Новое: интеграция с VK AI</div>
               <h1>Создавайте чат-ботов для <span className="lp-grad-text">ВКонтакте</span> без кода</h1>
-              <p className="lp-hero-sub">SaaS-платформа для разработки умных ботов с визуальным конструктором, готовыми сценариями и полной интеграцией VK API. Запуск за 15 минут.</p>
+              <p className="lp-hero-sub">Платформа для разработки умных ботов с визуальным конструктором, готовыми сценариями и интеграцией VK API. Запуск за 15 минут.</p>
               <div className="lp-hero-cta">
                 <button className="lp-btn lp-btn-primary lp-btn-lg" onClick={onRegister}>Начать бесплатно →</button>
               </div>
