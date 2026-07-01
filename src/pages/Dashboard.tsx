@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import { api } from "@/api";
-import { Bot, Lead, Webhook, VkStatus, Tab, s } from "./dashboard/types";
+import { Bot, Lead, Webhook, VkStatus, Landing, Tab, s } from "./dashboard/types";
 import BotsTab from "./dashboard/BotsTab";
 import LeadsTab from "./dashboard/LeadsTab";
 import WebhooksTab from "./dashboard/WebhooksTab";
 import VkTab from "./dashboard/VkTab";
+import LandingsTab from "./dashboard/LandingsTab";
 
 interface Props {
   user: { id: number; email: string; name: string };
   onLogout: () => void;
   onOpenBot: (id: number) => void;
+  onOpenLanding: (id: number) => void;
   onGoHome: () => void;
 }
 
-export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props) {
+export default function Dashboard({ user, onLogout, onOpenBot, onOpenLanding, onGoHome }: Props) {
   const [tab, setTab] = useState<Tab>("bots");
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,10 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
   const [vkForm, setVkForm] = useState({ accessToken: "", groupId: "", secretKey: "", confirmCode: "" });
   const [vkSaving, setVkSaving] = useState(false);
   const [vkError, setVkError] = useState("");
+  // Landings
+  const [landings, setLandings] = useState<Landing[]>([]);
+  const [landingsLoading, setLandingsLoading] = useState(false);
+  const [landingCreating, setLandingCreating] = useState(false);
 
   useEffect(() => {
     api.getBots().then((d) => { setBots(d.bots); setLoading(false); }).catch(() => setLoading(false));
@@ -149,6 +155,33 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
     setVkStatus((s) => s ? { ...s, active: !s.active } : s);
   };
 
+  const loadLandings = async () => {
+    setTab("landings");
+    setLandingsLoading(true);
+    try {
+      const d = await api.getLandings();
+      setLandings(d.landings);
+    } finally {
+      setLandingsLoading(false);
+    }
+  };
+
+  const createLanding = async () => {
+    setLandingCreating(true);
+    try {
+      const d = await api.createLanding("Мой лендинг", [], {});
+      onOpenLanding(d.id);
+    } finally {
+      setLandingCreating(false);
+    }
+  };
+
+  const deleteLanding = async (id: number) => {
+    if (!confirm("Удалить лендинг?")) return;
+    await api.deleteLanding(id);
+    setLandings((prev) => prev.filter((l) => l.id !== id));
+  };
+
   const logout = async () => {
     await api.logout().catch(() => {});
     localStorage.removeItem("bf_token");
@@ -168,6 +201,7 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
           <div style={{ ...s.navItem, ...(tab === "leads" ? s.navActive : {}) }} onClick={() => { if (bots.length > 0) loadLeads(selectedBotForLeads ?? bots[0].id); }}>📧 Лиды</div>
           <div style={{ ...s.navItem, ...(tab === "webhooks" ? s.navActive : {}) }} onClick={() => { if (bots.length > 0) loadWebhooks(selectedBotForWh ?? bots[0].id); }}>🔗 Webhook</div>
           <div style={{ ...s.navItem, ...(tab === "vk" ? s.navActive : {}) }} onClick={() => { if (bots.length > 0) loadVkStatus(selectedBotForVk ?? bots[0].id); }}>💙 ВКонтакте</div>
+          <div style={{ ...s.navItem, ...(tab === "landings" ? s.navActive : {}) }} onClick={loadLandings}>🖼 Лендинги</div>
           <div style={s.navItem}>📊 Аналитика</div>
           <div style={s.navItem}>⚙️ Настройки</div>
           <div style={s.navDivider} />
@@ -249,6 +283,17 @@ export default function Dashboard({ user, onLogout, onOpenBot, onGoHome }: Props
             onConnectVk={connectVk}
             onToggleVk={toggleVk}
             onSetVkConfirm={setVkConfirm}
+          />
+        )}
+
+        {tab === "landings" && (
+          <LandingsTab
+            landings={landings}
+            loading={landingsLoading}
+            creating={landingCreating}
+            onCreate={createLanding}
+            onOpen={onOpenLanding}
+            onDelete={deleteLanding}
           />
         )}
       </main>

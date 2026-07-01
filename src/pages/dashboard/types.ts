@@ -24,7 +24,11 @@ export interface VkStatus {
   secret_key?: string; confirm_code?: string; active?: boolean;
 }
 
-export type Tab = "bots" | "leads" | "webhooks" | "vk";
+export interface Landing {
+  id: number; name: string; published: boolean; updated_at: string;
+}
+
+export type Tab = "bots" | "leads" | "webhooks" | "vk" | "landings";
 
 export const s: Record<string, React.CSSProperties> = {
   page: { display: "flex", minHeight: "100vh", background: "#F4F6FF", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },

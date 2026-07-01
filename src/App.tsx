@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
 import BotBuilder from "@/pages/BotBuilder";
+import LandingBuilder from "@/pages/LandingBuilder";
 import { api } from "@/api";
 import LandingPage from "@/pages/LandingPage";
 
-type Screen = "landing" | "auth" | "dashboard" | "builder";
+type Screen = "landing" | "auth" | "dashboard" | "builder" | "landingBuilder";
 interface User { id: number; email: string; name: string; }
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
     const v = localStorage.getItem("bf_bot_id");
     return v ? Number(v) : null;
   });
+  const [landingId, setLandingId] = useState<number | null>(null);
   const [checking, setChecking] = useState(true);
 
   const setScreen = (s: Screen) => {
@@ -55,6 +57,11 @@ export default function App() {
     setScreen("builder");
   };
 
+  const onOpenLanding = (id: number) => {
+    setLandingId(id);
+    setScreen("landingBuilder");
+  };
+
   if (checking) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", color: "#8B92B8" }}>
@@ -66,8 +73,11 @@ export default function App() {
   if (screen === "builder" && botId && user) {
     return <BotBuilder botId={botId} onBack={() => setScreen("dashboard")} />;
   }
+  if (screen === "landingBuilder" && landingId && user) {
+    return <LandingBuilder landingId={landingId} onBack={() => setScreen("dashboard")} />;
+  }
   if (screen === "dashboard" && user) {
-    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} onGoHome={() => setScreen("landing")} />;
+    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} onOpenLanding={onOpenLanding} onGoHome={() => setScreen("landing")} />;
   }
   if (screen === "auth") {
     return <AuthPage onAuth={onAuth} />;

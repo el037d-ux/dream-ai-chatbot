@@ -4,6 +4,7 @@ const LEADS_URL = "https://functions.poehali.dev/96aa177e-abc9-4ba3-ad48-bbf9353
 const AI_URL = "https://functions.poehali.dev/fa4308f7-059d-4404-aca1-10cfeb46e8ff";
 const AI_ASSISTANT_URL = "https://functions.poehali.dev/17e10c45-10e7-4ed3-af8e-8168e7fa6e23";
 const VK_CONNECT_URL = "https://functions.poehali.dev/f8b7cbf4-0be7-40e9-873e-54b9c2a9ba08";
+const LANDINGS_URL = "https://functions.poehali.dev/740d90fc-85a3-4423-b66e-560769d88778";
 export const VK_BOT_URL = "https://functions.poehali.dev/bf37291d-9d5d-4ef1-a4d6-361dbf50b813";
 
 function getToken() {
@@ -68,4 +69,15 @@ export const api = {
     req(`${VK_CONNECT_URL}?action=toggle`, "POST", { bot_id: botId, active }, true),
   vkDisconnect: (botId: number) =>
     req(`${VK_CONNECT_URL}?action=disconnect`, "POST", { bot_id: botId }, true),
+
+  getLandings: () => req(`${LANDINGS_URL}?action=list`, "GET", undefined, true),
+  createLanding: (name: string, blocks: object[], theme: object) =>
+    req(`${LANDINGS_URL}?action=create`, "POST", { name, blocks, theme }, true),
+  getLanding: (id: number) => req(`${LANDINGS_URL}?action=get&id=${id}`, "GET", undefined, true),
+  saveLanding: (id: number, name: string, blocks: object[], theme: object) =>
+    req(`${LANDINGS_URL}?action=save`, "POST", { id, name, blocks, theme }, true),
+  publishLanding: (id: number, published: boolean) =>
+    req(`${LANDINGS_URL}?action=publish`, "POST", { id, published }, true),
+  deleteLanding: (id: number) =>
+    req(`${LANDINGS_URL}?action=delete`, "POST", { id }, true),
 };
