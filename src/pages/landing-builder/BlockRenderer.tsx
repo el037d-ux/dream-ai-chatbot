@@ -25,6 +25,25 @@ export default function BlockRenderer({ block, theme }: Props) {
         {str(d.button) && (
           <button style={{ background: theme.primary, color: "#fff", border: "none", borderRadius: "12px", padding: "14px 30px", fontSize: "1rem", fontWeight: 700, cursor: "pointer" }}>{str(d.button)}</button>
         )}
+        {str(d.image) && (
+          <img src={str(d.image)} alt="" style={{ display: "block", maxWidth: "100%", margin: "32px auto 0", borderRadius: "16px", boxShadow: "0 10px 40px rgba(0,0,0,0.12)" }} />
+        )}
+      </div>
+    );
+  }
+
+  if (block.type === "image") {
+    if (!str(d.image)) {
+      return (
+        <div style={{ ...wrap, textAlign: "center", color: "#8B92B8" }}>
+          Загрузите изображение в панели справа
+        </div>
+      );
+    }
+    return (
+      <div style={{ ...wrap, textAlign: "center" }}>
+        <img src={str(d.image)} alt={str(d.caption)} style={{ display: "block", maxWidth: "100%", margin: "0 auto", borderRadius: "14px" }} />
+        {str(d.caption) && <div style={{ marginTop: "12px", opacity: 0.6, fontSize: "0.85rem" }}>{str(d.caption)}</div>}
       </div>
     );
   }

@@ -28,8 +28,54 @@ def build_keyboard(buttons: list, one_time: bool = True) -> str:
     return json.dumps({"one_time": one_time, "buttons": rows}, ensure_ascii=False)
 
 
-def vk_send(peer_id: int, message: str, token: str, keyboard: str = None, remove_keyboard: bool = False):
-    """Отправить сообщение пользователю ВК, опционально с клавиатурой."""
+def _vk_get(method: str, params: dict):
+    """GET-запрос к VK API."""
+    params = {**params, "v": "5.131"}
+    qs = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items())
+    req = urllib.request.Request(f"https://api.vk.com/method/{method}?{qs}")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def upload_photo_to_vk(peer_id: int, image_url: str, token: str) -> str:
+    """Загрузить картинку в ВК и вернуть attachment-строку photo{owner}_{id}."""
+    try:
+        # 1. Получаем сервер для загрузки
+        up = _vk_get("photos.getMessagesUploadServer", {"peer_id": peer_id, "access_token": token})
+        upload_url = up["response"]["upload_url"]
+
+        # 2. Скачиваем картинку из нашего S3
+        with urllib.request.urlopen(image_url, timeout=10) as r:
+            img_bytes = r.read()
+
+        # 3. Загружаем как multipart/form-data на сервер ВК
+        boundary = "----botflowboundary" + str(random.randint(1, 2**31))
+        body = b""
+        body += f'--{boundary}\r\n'.encode()
+        body += b'Content-Disposition: form-data; name="photo"; filename="image.jpg"\r\n'
+        body += b'Content-Type: application/octet-stream\r\n\r\n'
+        body += img_bytes + b"\r\n"
+        body += f'--{boundary}--\r\n'.encode()
+        req = urllib.request.Request(upload_url, data=body, method="POST")
+        req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            uploaded = json.loads(resp.read().decode("utf-8"))
+
+        # 4. Сохраняем фото
+        saved = _vk_get("photos.saveMessagesPhoto", {
+            "photo": uploaded["photo"],
+            "server": uploaded["server"],
+            "hash": uploaded["hash"],
+            "access_token": token,
+        })
+        p = saved["response"][0]
+        return f"photo{p['owner_id']}_{p['id']}"
+    except Exception:
+        return ""
+
+
+def vk_send(peer_id: int, message: str, token: str, keyboard: str = None, remove_keyboard: bool = False, image_url: str = ""):
+    """Отправить сообщение пользователю ВК, опционально с клавиатурой и картинкой."""
     params = {
         "peer_id": peer_id,
         "message": message or "...",
@@ -37,6 +83,10 @@ def vk_send(peer_id: int, message: str, token: str, keyboard: str = None, remove
         "access_token": token,
         "v": "5.131",
     }
+    if image_url:
+        attachment = upload_photo_to_vk(peer_id, image_url, token)
+        if attachment:
+            params["attachment"] = attachment
     if keyboard is not None:
         params["keyboard"] = keyboard
     elif remove_keyboard:
@@ -46,7 +96,7 @@ def vk_send(peer_id: int, message: str, token: str, keyboard: str = None, remove
     req = urllib.request.Request(
         f"https://api.vk.com/method/messages.send?{qs}", method="POST"
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -65,6 +115,7 @@ def load_scenario(cur, bot_id: int):
             "webhookUrl": extra.get("webhookUrl", ""),
             "webhookMethod": extra.get("webhookMethod", "POST"),
             "buttons": extra.get("buttons", []),
+            "imageUrl": extra.get("imageUrl", ""),
         }
     cur.execute("SELECT source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s", (bot_id,))
     edges = cur.fetchall()
@@ -214,8 +265,9 @@ def process_message(vk_user_id: int, text: str, bot_id: int, access_token: str, 
             kb_btns = get_next_keyboard(next_node["id"], edges, nodes)
             keyboard = build_keyboard(kb_btns) if kb_btns else None
             vk_send(vk_user_id, "✅ Email сохранён! Спасибо.", access_token, remove_keyboard=not kb_btns)
-            if next_node["message"]:
-                vk_send(vk_user_id, next_node["message"], access_token, keyboard=keyboard)
+            nn_img = next_node.get("imageUrl", "")
+            if next_node["message"] or nn_img:
+                vk_send(vk_user_id, next_node["message"], access_token, keyboard=keyboard, image_url=nn_img)
         else:
             vk_send(vk_user_id, "✅ Email сохранён! Спасибо.", access_token, remove_keyboard=True)
 
@@ -238,7 +290,7 @@ def process_message(vk_user_id: int, text: str, bot_id: int, access_token: str, 
                 # Отправляем приветствие триггера с его кнопками
                 btns = get_next_keyboard(trigger["id"], edges, nodes)
                 keyboard = build_keyboard(btns) if btns else None
-                vk_send(vk_user_id, trigger["message"], access_token, keyboard=keyboard)
+                vk_send(vk_user_id, trigger["message"], access_token, keyboard=keyboard, image_url=trigger.get("imageUrl", ""))
                 session["current_node_id"] = trigger["id"]
                 save_session(cur, conn, vk_user_id, bot_id, session)
                 return
@@ -254,8 +306,9 @@ def process_message(vk_user_id: int, text: str, bot_id: int, access_token: str, 
         # Приветствие
         btns = get_next_keyboard(next_node["id"], edges, nodes)
         keyboard = build_keyboard(btns) if btns else None
-        if next_node["message"]:
-            vk_send(vk_user_id, next_node["message"], access_token, keyboard=keyboard)
+        img = next_node.get("imageUrl", "")
+        if next_node["message"] or img:
+            vk_send(vk_user_id, next_node["message"], access_token, keyboard=keyboard, image_url=img)
         save_session(cur, conn, vk_user_id, bot_id, session)
         return
 
@@ -277,21 +330,24 @@ def process_message(vk_user_id: int, text: str, bot_id: int, access_token: str, 
             session["current_node_id"] = auto_next["id"]
             btns = get_next_keyboard(auto_next["id"], edges, nodes)
             keyboard = build_keyboard(btns) if btns else None
-            if auto_next["message"]:
-                vk_send(vk_user_id, auto_next["message"], access_token, keyboard=keyboard)
+            auto_img = auto_next.get("imageUrl", "")
+            if auto_next["message"] or auto_img:
+                vk_send(vk_user_id, auto_next["message"], access_token, keyboard=keyboard, image_url=auto_img)
     else:
         btns = get_next_keyboard(next_node["id"], edges, nodes)
         keyboard = build_keyboard(btns) if btns else None
         msg = next_node["message"] or ""
-        if msg:
-            vk_send(vk_user_id, msg, access_token, keyboard=keyboard)
+        img = next_node.get("imageUrl", "")
+        if msg or img:
+            vk_send(vk_user_id, msg, access_token, keyboard=keyboard, image_url=img)
         # Если за ним есть автоматический message без condition — отправляем его тоже
         if not btns:
             auto_next = get_next_node(next_node["id"], edges, nodes)
-            if auto_next and auto_next["type"] == "message" and auto_next["message"]:
+            auto_img2 = auto_next.get("imageUrl", "") if auto_next else ""
+            if auto_next and auto_next["type"] == "message" and (auto_next["message"] or auto_img2):
                 auto_btns = get_next_keyboard(auto_next["id"], edges, nodes)
                 auto_kb = build_keyboard(auto_btns) if auto_btns else None
-                vk_send(vk_user_id, auto_next["message"], access_token, keyboard=auto_kb)
+                vk_send(vk_user_id, auto_next["message"], access_token, keyboard=auto_kb, image_url=auto_img2)
                 session["current_node_id"] = auto_next["id"]
 
     save_session(cur, conn, vk_user_id, bot_id, session)

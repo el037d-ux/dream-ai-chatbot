@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import ImageUpload from "@/components/ImageUpload";
 import { Block } from "./blocks";
 
 interface Props {
@@ -57,6 +58,16 @@ export default function BlockEditor({ block, onChange }: Props) {
         <Field label="Заголовок" value={s(d.title)} onChange={(v) => set("title", v)} />
         <Field label="Подзаголовок" value={s(d.subtitle)} onChange={(v) => set("subtitle", v)} multiline />
         <Field label="Текст кнопки" value={s(d.button)} onChange={(v) => set("button", v)} />
+        <ImageUpload label="Картинка под шапкой" value={s(d.image)} onChange={(url) => set("image", url)} />
+      </div>
+    );
+  }
+
+  if (block.type === "image") {
+    return (
+      <div style={gap}>
+        <ImageUpload label="Изображение" value={s(d.image)} onChange={(url) => set("image", url)} height={160} />
+        <Field label="Подпись (необязательно)" value={s(d.caption)} onChange={(v) => set("caption", v)} />
       </div>
     );
   }

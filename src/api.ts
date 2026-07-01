@@ -5,6 +5,7 @@ const AI_URL = "https://functions.poehali.dev/fa4308f7-059d-4404-aca1-10cfeb46e8
 const AI_ASSISTANT_URL = "https://functions.poehali.dev/17e10c45-10e7-4ed3-af8e-8168e7fa6e23";
 const VK_CONNECT_URL = "https://functions.poehali.dev/f8b7cbf4-0be7-40e9-873e-54b9c2a9ba08";
 const LANDINGS_URL = "https://functions.poehali.dev/740d90fc-85a3-4423-b66e-560769d88778";
+const UPLOAD_URL = "https://functions.poehali.dev/8289b013-cfec-4ea8-b295-5df28c73e174";
 export const VK_BOT_URL = "https://functions.poehali.dev/bf37291d-9d5d-4ef1-a4d6-361dbf50b813";
 
 function getToken() {
@@ -80,4 +81,7 @@ export const api = {
     req(`${LANDINGS_URL}?action=publish`, "POST", { id, published }, true),
   deleteLanding: (id: number) =>
     req(`${LANDINGS_URL}?action=delete`, "POST", { id }, true),
+
+  uploadImage: (contentType: string, dataBase64: string): Promise<{ url: string }> =>
+    req(UPLOAD_URL, "POST", { content_type: contentType, data: dataBase64 }, true),
 };

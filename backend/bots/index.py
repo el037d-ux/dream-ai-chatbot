@@ -107,6 +107,7 @@ def handler(event: dict, context) -> dict:
                 "webhookMethod": extra.get("webhookMethod", "POST"),
                 "webhookSecret": extra.get("webhookSecret", ""),
                 "buttons": extra.get("buttons", []),
+                "imageUrl": extra.get("imageUrl", ""),
             })
         cur.execute("SELECT edge_id, source_node_id, target_node_id FROM bot_edges WHERE bot_id=%s AND source_node_id != '__del__'", (bot_id,))
         edges = [{"id": e[0], "source": e[1], "target": e[2]} for e in cur.fetchall()]
@@ -148,6 +149,7 @@ def handler(event: dict, context) -> dict:
             if n.get("webhookMethod"): extra["webhookMethod"] = n["webhookMethod"]
             if n.get("webhookSecret"): extra["webhookSecret"] = n["webhookSecret"]
             if n.get("buttons"): extra["buttons"] = n["buttons"]
+            if n.get("imageUrl"): extra["imageUrl"] = n["imageUrl"]
             cur.execute("""INSERT INTO bot_nodes
                 (bot_id, node_id, type, label, message, pos_x, pos_y, var_name, validate, error_msg, extra)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)

@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Bad content type returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"content_type": "text/plain", "data": "aGVsbG8="},
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Upload tiny png returns url",
+      "method": "POST",
+      "path": "/",
+      "body": {"content_type": "image/png", "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQBOBgLbAAAAAElFTkSuQmCC"},
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

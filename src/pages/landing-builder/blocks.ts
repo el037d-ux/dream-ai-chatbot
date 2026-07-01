@@ -1,4 +1,4 @@
-export type BlockType = "hero" | "features" | "pricing" | "cta" | "text" | "form" | "footer";
+export type BlockType = "hero" | "image" | "features" | "pricing" | "cta" | "text" | "form" | "footer";
 
 export interface Block {
   id: string;
@@ -43,6 +43,20 @@ export const BLOCK_LIBRARY: BlockMeta[] = [
         title: "Заголовок вашего продукта",
         subtitle: "Короткое описание, которое объясняет ценность за 5 секунд.",
         button: "Оставить заявку",
+        image: "",
+      },
+    }),
+  },
+  {
+    type: "image",
+    label: "Изображение",
+    icon: "Image",
+    make: () => ({
+      id: blockId(),
+      type: "image",
+      data: {
+        image: "",
+        caption: "",
       },
     }),
   },

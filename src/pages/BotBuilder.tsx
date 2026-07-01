@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/api";
+import ImageUpload from "@/components/ImageUpload";
 
 // ─── Types ────────────────────────────────────────────────────────
 interface Node {
@@ -19,6 +20,8 @@ interface Node {
   webhookSecret?: string;
   // Кнопки ВК / чат-теста
   buttons?: string[];
+  // Изображение, прикреплённое к сообщению
+  imageUrl?: string;
 }
 interface Edge { id: string; source: string; target: string; }
 interface Prompt {
@@ -133,6 +136,9 @@ function NodeCard({ node, selected, connecting, connectingActive, onSelect, onMo
           {node.message}
         </div>
       )}
+      {node.imageUrl && (
+        <img src={node.imageUrl} alt="" style={{ display: "block", width: "100%", maxWidth: "210px", height: "90px", objectFit: "cover", borderRadius: "8px", marginTop: "8px" }} />
+      )}
       {node.buttons && node.buttons.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "8px", maxWidth: "210px" }}>
           {node.buttons.map((btn, i) => (
@@ -196,6 +202,7 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
   const [newBtn, setNewBtn] = useState("");
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editVal, setEditVal] = useState("");
+  const [imageUrl, setImageUrl] = useState(node.imageUrl || "");
   // Для action-узла: подтип действия — webhook или email
   const [actionSubtype, setActionSubtype] = useState<"webhook" | "email">(
     node.type === "email" ? "email" : "webhook"
@@ -212,6 +219,7 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
     setWebhookMethod(node.webhookMethod || "POST"); setWebhookSecret(node.webhookSecret || "");
     setButtons(node.buttons || []); setNewBtn("");
     setEditIdx(null); setEditVal("");
+    setImageUrl(node.imageUrl || "");
   }, [node.id]);
 
   // Реальный тип для сохранения: action с подтипом email → тип "email"
@@ -225,7 +233,7 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
     setNewBtn("");
   };
 
-  const save = () => onSave({ ...node, label, message, type: effectiveType, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret, buttons });
+  const save = () => onSave({ ...node, label, message, type: effectiveType, varName, validate, errorMsg, webhookUrl, webhookMethod, webhookSecret, buttons, imageUrl });
 
   return (
     <div style={{ ...p.panel, width: "320px" }}>
@@ -328,6 +336,20 @@ function NodePanel({ node, onSave, onClose, onDelete }: {
           <div style={{ background: "rgba(255,184,0,0.06)", border: "1.5px solid rgba(255,184,0,0.2)", borderRadius: "12px", padding: "12px", fontSize: "0.78rem", color: "#8B92B8", lineHeight: 1.5 }}>
             <span style={{ fontWeight: 700, color: "#B8860B" }}>💡 Подсказка:</span> в поле «Название» укажите ключевые слова через запятую — когда пользователь напишет одно из них, бот пойдёт по этой ветке.
             <div style={{ marginTop: "6px" }}>Пример: <span style={{ fontFamily: "monospace", color: "#FFB800" }}>да,конечно,хочу</span></div>
+          </div>
+        )}
+
+        {/* ИЗОБРАЖЕНИЕ — для trigger / message / ai узлов */}
+        {(type === "trigger" || type === "message" || type === "ai") && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(123,97,255,0.05)", border: "1.5px solid rgba(123,97,255,0.15)", borderRadius: "12px", padding: "12px" }}>
+            <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7B61FF", display: "flex", alignItems: "center", gap: "6px" }}>
+              🖼 Картинка к сообщению
+              <span style={{ fontWeight: 400, color: "#8B92B8", fontSize: "0.7rem" }}>(необязательно)</span>
+            </div>
+            <ImageUpload label="" value={imageUrl} onChange={setImageUrl} height={120} />
+            <div style={{ fontSize: "0.7rem", color: "#8B92B8", lineHeight: 1.4 }}>
+              Картинка отправится вместе с текстом сообщения в ВКонтакте.
+            </div>
           </div>
         )}
 
