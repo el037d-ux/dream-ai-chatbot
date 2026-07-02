@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   onRegister: () => void;
@@ -6,6 +6,8 @@ interface Props {
 }
 
 export default function LandingPage({ onRegister, onLogin }: Props) {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   useEffect(() => {
     const toggle = document.getElementById("pricingToggle");
     const toggleLabels = document.querySelectorAll<HTMLElement>(".toggle-label");
@@ -23,18 +25,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
       });
     };
     toggle?.addEventListener("click", handleToggle);
-
-    const faqItems = document.querySelectorAll<HTMLElement>(".faq-item");
-    const faqHandlers: Array<() => void> = [];
-    faqItems.forEach((item) => {
-      const h = () => {
-        const was = item.classList.contains("active");
-        faqItems.forEach((i) => i.classList.remove("active"));
-        if (!was) item.classList.add("active");
-      };
-      faqHandlers.push(h);
-      item.addEventListener("click", h);
-    });
 
     const navbar = document.querySelector<HTMLElement>(".lp-navbar");
     const onScroll = () => {
@@ -59,7 +49,6 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
 
     return () => {
       toggle?.removeEventListener("click", handleToggle);
-      faqItems.forEach((item, i) => item.removeEventListener("click", faqHandlers[i]));
       window.removeEventListener("scroll", onScroll);
       obs.disconnect();
     };
@@ -445,8 +434,8 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
               {q:"Как подключить ChatGPT к боту?",a:"Добавь узел «AI-ответ» и соедини его стрелкой. Затем открой «🤖 AI-промпт» в верхней панели и заполни хотя бы раздел «Роль и личность» — укажи, кто твой бот и какова его цель. Бот начнёт отвечать через GPT, когда пользователь попадёт на этот узел."},
               {q:"Как подключить сообщество ВКонтакте?",a:"Раздел «💙 ВКонтакте» в кабинете: вставь Access Token группы и её ID, нажми «Подключить». Появится Webhook URL — скопируй его в настройки группы VK (Работа с API → Callback API). После подтверждения включи переключатель «Бот активен»."},
               {q:"Где хранятся собранные email-адреса?",a:"В разделе «📧 Лиды» кабинета. Для сбора добавь узел «Действие» → выбери подтип «Сбор email». Бот запросит адрес у пользователя и сохранит его в базу с датой и именем переменной."},
-            ].map((item)=>(
-              <div key={item.q} className="faq-item">
+            ].map((item, i) => (
+              <div key={item.q} className={`faq-item${openFaq === i ? " active" : ""}`} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 <div className="faq-q"><span>{item.q}</span><div className="faq-icon">+</div></div>
                 <div className="faq-answer">{item.a}</div>
               </div>
