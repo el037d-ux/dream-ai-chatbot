@@ -88,7 +88,8 @@ def handler(event: dict, context) -> dict:
             prompt_persona, prompt_goal, prompt_context, prompt_instructions, prompt_constraints, prompt_examples,
             COALESCE(prompt_bot_name,''), COALESCE(prompt_bot_role,''), COALESCE(prompt_traits,''),
             COALESCE(prompt_tasks,''), COALESCE(prompt_address,'ты'), COALESCE(prompt_tone,''),
-            COALESCE(prompt_emoji,''), COALESCE(prompt_structure,''), COALESCE(prompt_format,'')
+            COALESCE(prompt_emoji,''), COALESCE(prompt_structure,''), COALESCE(prompt_format,''),
+            COALESCE(prompt_button_css,'')
             FROM bots WHERE id=%s AND user_id=%s""", (bot_id, user_id))
         r = cur.fetchone()
         if not r:
@@ -119,6 +120,7 @@ def handler(event: dict, context) -> dict:
             "prompt_bot_name": r[12], "prompt_bot_role": r[13], "prompt_traits": r[14],
             "prompt_tasks": r[15], "prompt_address": r[16], "prompt_tone": r[17],
             "prompt_emoji": r[18], "prompt_structure": r[19], "prompt_format": r[20],
+            "prompt_button_css": r[21],
         }, "nodes": nodes, "edges": edges})
 
     # ── SAVE ─────────────────────────────────────────────────────────
@@ -178,13 +180,15 @@ def handler(event: dict, context) -> dict:
             prompt_instructions=%s, prompt_constraints=%s, prompt_examples=%s,
             prompt_bot_name=%s, prompt_bot_role=%s, prompt_traits=%s,
             prompt_tasks=%s, prompt_address=%s, prompt_tone=%s,
-            prompt_emoji=%s, prompt_structure=%s, prompt_format=%s
+            prompt_emoji=%s, prompt_structure=%s, prompt_format=%s,
+            prompt_button_css=%s
             WHERE id=%s""", (
             prompt.get("persona",""), prompt.get("goal",""), prompt.get("context",""),
             prompt.get("instructions",""), prompt.get("constraints",""), prompt.get("examples",""),
             prompt.get("botName",""), prompt.get("botRole",""), prompt.get("traits",""),
             prompt.get("tasks",""), prompt.get("address","ты"), prompt.get("tone",""),
             prompt.get("emoji",""), prompt.get("structure",""), prompt.get("format",""),
+            prompt.get("buttonCss",""),
             bot_id
         ))
         conn.commit()

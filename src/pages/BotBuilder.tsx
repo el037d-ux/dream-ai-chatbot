@@ -39,6 +39,8 @@ interface Prompt {
   examples: string;
   // Legacy (для совместимости)
   persona: string; context: string; instructions: string;
+  // Стилизация
+  buttonCss: string;
 }
 interface BotInfo {
   id: number; name: string; description: string; status: string;
@@ -439,7 +441,7 @@ function inp(extra?: React.CSSProperties): React.CSSProperties {
 }
 function lbl(): React.CSSProperties { return { fontSize: "0.73rem", fontWeight: 700, color: "#8B92B8", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }; }
 
-const EMPTY_PROMPT: Prompt = { botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "" };
+const EMPTY_PROMPT: Prompt = { botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "", buttonCss: "" };
 
 function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Prompt) => void }) {
   const [open, setOpen] = useState<SectionKey>("identity");
@@ -636,6 +638,63 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
             <textarea style={inp({ resize: "vertical", minHeight: "180px", fontFamily: "monospace", fontSize: "0.8rem" })}
               value={prompt.examples} onChange={set("examples")}
               placeholder={"Пользователь: Сколько стоит доставка?\nБот: Доставка бесплатна при заказе от 3000₽. При меньшей сумме — 290₽. Хотите узнать, что входит в ваш заказ?\n\nПользователь: А вы не обманываете?\nБот: Понимаю скептицизм — это нормально при первом знакомстве. Мы работаем с 2018 года, 4.9★ на Яндекс.Маркете. Могу прислать отзывы?"} rows={8} />
+          </div>
+        )}
+      </div>
+
+      {/* CSS-редактор кнопок */}
+      <div style={{ borderTop: "1px solid #E0E4F0", flexShrink: 0 }}>
+        <button
+          onClick={() => setOpen((v) => (v === ("buttonCss" as SectionKey) ? "identity" : ("buttonCss" as SectionKey)))}
+          style={{ width: "100%", background: "#F8F9FF", border: "none", padding: "10px 16px", fontSize: "0.8rem", fontWeight: 600, color: prompt.buttonCss ? "#7B61FF" : "#4A5280", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", justifyContent: "space-between" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            🎨 CSS кнопок быстрых ответов
+            {prompt.buttonCss && <span style={{ fontSize: "0.68rem", background: "#7B61FF22", color: "#7B61FF", borderRadius: "6px", padding: "2px 7px", fontWeight: 700 }}>настроен</span>}
+          </span>
+          <span style={{ fontSize: "0.9rem", color: "#C8CEE0" }}>{open === ("buttonCss" as SectionKey) ? "▲" : "▼"}</span>
+        </button>
+        {open === ("buttonCss" as SectionKey) && (
+          <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px", background: "#fff" }}>
+            <div style={{ fontSize: "0.76rem", color: "#8B92B8", lineHeight: 1.5 }}>
+              Произвольный CSS применяется к каждой кнопке. Используй любые свойства.
+            </div>
+            {/* Шаблоны */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {[
+                { label: "Сброс", css: "" },
+                { label: "Пилюля", css: "background:#0077FF;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-weight:700;font-size:0.82rem;" },
+                { label: "Квадрат", css: "background:#fff;color:#0A0E27;border:2px solid #0A0E27;border-radius:4px;padding:6px 14px;font-weight:600;font-size:0.82rem;" },
+                { label: "Градиент", css: "background:linear-gradient(135deg,#7B61FF,#0077FF);color:#fff;border:none;border-radius:12px;padding:7px 16px;font-weight:700;font-size:0.82rem;" },
+                { label: "Тень", css: "background:#fff;color:#0077FF;border:1.5px solid #0077FF44;border-radius:14px;padding:5px 14px;font-weight:600;box-shadow:0 4px 12px #0077FF33;font-size:0.82rem;" },
+                { label: "Тёмный", css: "background:#0A0E27;color:#fff;border:none;border-radius:10px;padding:6px 14px;font-weight:600;font-size:0.82rem;" },
+              ].map((t) => (
+                <button key={t.label} onClick={() => onChange({ ...prompt, buttonCss: t.css })}
+                  style={{ fontSize: "0.72rem", fontWeight: 600, padding: "4px 10px", borderRadius: "7px", border: "1.5px solid #E0E4F0", background: prompt.buttonCss === t.css ? "#7B61FF" : "#F4F6FF", color: prompt.buttonCss === t.css ? "#fff" : "#4A5280", cursor: "pointer" }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {/* Редактор */}
+            <textarea
+              style={{ fontFamily: "monospace", fontSize: "0.78rem", padding: "10px", border: "1.5px solid #E0E4F0", borderRadius: "10px", resize: "vertical", minHeight: "110px", background: "#FAFBFF", color: "#0A0E27", outline: "none" }}
+              placeholder={"background: #7B61FF;\ncolor: #fff;\nborder: none;\nborder-radius: 12px;\npadding: 7px 18px;\nfont-weight: 700;"}
+              value={prompt.buttonCss}
+              onChange={(e) => onChange({ ...prompt, buttonCss: e.target.value })}
+            />
+            {/* Live превью */}
+            <div style={{ background: "#F8F9FF", borderRadius: "10px", padding: "14px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: "0.72rem", color: "#8B92B8", marginRight: "4px" }}>Превью:</span>
+              {["Да, хочу", "Узнать цену", "Нет, спасибо"].map((b) => (
+                <button key={b} style={prompt.buttonCss ? Object.fromEntries(
+                  prompt.buttonCss.split(";").map((r) => r.trim()).filter(Boolean).map((r) => {
+                    const [k, ...v] = r.split(":");
+                    return [k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v.join(":").trim()];
+                  })
+                ) as React.CSSProperties : { background: "#fff", border: "1.5px solid #0077FF44", borderRadius: "16px", padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#0077FF", cursor: "pointer" }}>
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1173,8 +1232,13 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
 
   const noNodes = nodes.length === 0;
 
+  const btnClass = `bf-chat-btn-${botId}`;
+
   return (
     <div style={{ width: "320px", background: "#fff", borderLeft: "1px solid #E0E4F0", display: "flex", flexDirection: "column", flexShrink: 0, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      {prompt.buttonCss && (
+        <style>{`.${btnClass}{${prompt.buttonCss}}`}</style>
+      )}
       {/* Header */}
       <div style={{ padding: "14px 16px", borderBottom: "3px solid #00D4AA", display: "flex", alignItems: "center", gap: "10px" }}>
         <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🤖</div>
@@ -1260,9 +1324,10 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
                         }, 600 + Math.random() * 200);
                       }, 0);
                     }}
-                      style={{ background: "#fff", border: "1.5px solid #0077FF44", borderRadius: "16px", padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#0077FF", cursor: "pointer", transition: "all 0.15s" }}
-                      onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.background = "#0077FF"; (e.target as HTMLButtonElement).style.color = "#fff"; }}
-                      onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.background = "#fff"; (e.target as HTMLButtonElement).style.color = "#0077FF"; }}
+                      className={prompt.buttonCss ? btnClass : undefined}
+                      style={prompt.buttonCss ? { cursor: "pointer" } : { background: "#fff", border: "1.5px solid #0077FF44", borderRadius: "16px", padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#0077FF", cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={prompt.buttonCss ? undefined : (e) => { (e.target as HTMLButtonElement).style.background = "#0077FF"; (e.target as HTMLButtonElement).style.color = "#fff"; }}
+                      onMouseLeave={prompt.buttonCss ? undefined : (e) => { (e.target as HTMLButtonElement).style.background = "#fff"; (e.target as HTMLButtonElement).style.color = "#0077FF"; }}
                     >
                       {btn}
                     </button>
@@ -1382,7 +1447,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [editNode, setEditNode] = useState<Node | null>(null);
   const [rightPanel, setRightPanel] = useState<RightPanel>(null);
-  const [prompt, setPrompt] = useState<Prompt>({ botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "" });
+  const [prompt, setPrompt] = useState<Prompt>({ botName: "", botRole: "", traits: "", goal: "", tasks: "", address: "ты", tone: "", emoji: "", structure: "", constraints: "", format: "", examples: "", persona: "", context: "", instructions: "", buttonCss: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -1415,6 +1480,7 @@ export default function BotBuilder({ botId, onBack }: Props) {
         instructions: d.bot.prompt_instructions || "",
         constraints:  d.bot.prompt_constraints  || "",
         examples:     d.bot.prompt_examples     || "",
+        buttonCss:    d.bot.prompt_button_css   || "",
       });
     });
   }, [botId]);
