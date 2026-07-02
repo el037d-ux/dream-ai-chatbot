@@ -447,6 +447,7 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
   const [open, setOpen] = useState<SectionKey>("identity");
   const [showPreview, setShowPreview] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [cssOpen, setCssOpen] = useState(false);
   const set = (k: keyof Prompt) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     onChange({ ...prompt, [k]: e.target.value });
 
@@ -645,15 +646,15 @@ function AIPromptPanel({ prompt, onChange }: { prompt: Prompt; onChange: (p: Pro
       {/* CSS-редактор кнопок */}
       <div style={{ borderTop: "1px solid #E0E4F0", flexShrink: 0 }}>
         <button
-          onClick={() => setOpen((v) => (v === ("buttonCss" as SectionKey) ? "identity" : ("buttonCss" as SectionKey)))}
+          onClick={() => setCssOpen((v) => !v)}
           style={{ width: "100%", background: "#F8F9FF", border: "none", padding: "10px 16px", fontSize: "0.8rem", fontWeight: 600, color: prompt.buttonCss ? "#7B61FF" : "#4A5280", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", justifyContent: "space-between" }}>
           <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             🎨 CSS кнопок быстрых ответов
             {prompt.buttonCss && <span style={{ fontSize: "0.68rem", background: "#7B61FF22", color: "#7B61FF", borderRadius: "6px", padding: "2px 7px", fontWeight: 700 }}>настроен</span>}
           </span>
-          <span style={{ fontSize: "0.9rem", color: "#C8CEE0" }}>{open === ("buttonCss" as SectionKey) ? "▲" : "▼"}</span>
+          <span style={{ fontSize: "0.9rem", color: "#C8CEE0" }}>{cssOpen ? "▲" : "▼"}</span>
         </button>
-        {open === ("buttonCss" as SectionKey) && (
+        {cssOpen && (
           <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px", background: "#fff" }}>
             <div style={{ fontSize: "0.76rem", color: "#8B92B8", lineHeight: 1.5 }}>
               Произвольный CSS применяется к каждой кнопке. Используй любые свойства.
@@ -1236,9 +1237,10 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
 
   return (
     <div style={{ width: "320px", background: "#fff", borderLeft: "1px solid #E0E4F0", display: "flex", flexDirection: "column", flexShrink: 0, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      {prompt.buttonCss && (
-        <style>{`.${btnClass}{${prompt.buttonCss}}`}</style>
-      )}
+      <style dangerouslySetInnerHTML={{ __html: prompt.buttonCss
+        ? `.${btnClass}{${prompt.buttonCss}}`
+        : `.${btnClass}{background:#fff;border:1.5px solid #0077FF44;border-radius:16px;padding:5px 12px;font-size:0.78rem;font-weight:600;color:#0077FF;cursor:pointer;transition:all 0.15s}`
+      }} />
       {/* Header */}
       <div style={{ padding: "14px 16px", borderBottom: "3px solid #00D4AA", display: "flex", alignItems: "center", gap: "10px" }}>
         <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg,#00D4AA,#0077FF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>🤖</div>
@@ -1324,10 +1326,7 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
                         }, 600 + Math.random() * 200);
                       }, 0);
                     }}
-                      className={prompt.buttonCss ? btnClass : undefined}
-                      style={prompt.buttonCss ? { cursor: "pointer" } : { background: "#fff", border: "1.5px solid #0077FF44", borderRadius: "16px", padding: "5px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#0077FF", cursor: "pointer", transition: "all 0.15s" }}
-                      onMouseEnter={prompt.buttonCss ? undefined : (e) => { (e.target as HTMLButtonElement).style.background = "#0077FF"; (e.target as HTMLButtonElement).style.color = "#fff"; }}
-                      onMouseLeave={prompt.buttonCss ? undefined : (e) => { (e.target as HTMLButtonElement).style.background = "#fff"; (e.target as HTMLButtonElement).style.color = "#0077FF"; }}
+                      className={btnClass}
                     >
                       {btn}
                     </button>
