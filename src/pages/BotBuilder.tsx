@@ -1067,7 +1067,8 @@ function ChatTestPanel({ nodes, edges, botName, botId, prompt, onClose }: {
     }
   };
 
-  useEffect(() => { reset(); }, [nodes.length]);
+  const nodesKey = nodes.map((n) => `${n.id}:${(n.buttons || []).join(",")}:${n.message}`).join("|");
+  useEffect(() => { reset(); }, [nodesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
