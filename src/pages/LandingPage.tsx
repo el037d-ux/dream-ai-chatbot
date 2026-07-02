@@ -461,6 +461,11 @@ export default function LandingPage({ onRegister, onLogin }: Props) {
             <div className="lp-fbrand">
               <a href="#" className="lp-flogo"><div className="lp-logo-icon">⚡</div>BotFlow</a>
               <p>SaaS-платформа для создания умных чат-ботов ВКонтакте без кода.</p>
+              <div style={{marginTop:"18px",display:"flex",flexDirection:"column",gap:"6px",fontSize:".83rem",color:"rgba(255,255,255,.55)"}}>
+                <a href="mailto:bot-flow@bot-flow.ru" style={{color:"rgba(255,255,255,.75)",textDecoration:"none"}}>bot-flow@bot-flow.ru</a>
+                <span>ИНН 110105729752</span>
+                <span>г. Сыктывкар</span>
+              </div>
             </div>
             {[
               {t:"Продукт",ls:["Возможности","Тарифы","Интеграции","Шаблоны","API"]},
