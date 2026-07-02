@@ -12,10 +12,11 @@ interface Props {
   onLogout: () => void;
   onOpenBot: (id: number) => void;
   onOpenLanding: (id: number) => void;
+  onOpenHelp: () => void;
   onGoHome: () => void;
 }
 
-export default function Dashboard({ user, onLogout, onOpenBot, onOpenLanding, onGoHome }: Props) {
+export default function Dashboard({ user, onLogout, onOpenBot, onOpenLanding, onOpenHelp, onGoHome }: Props) {
   const [tab, setTab] = useState<Tab>("bots");
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,6 +206,7 @@ export default function Dashboard({ user, onLogout, onOpenBot, onOpenLanding, on
           <div style={s.navItem}>📊 Аналитика</div>
           <div style={s.navItem}>⚙️ Настройки</div>
           <div style={s.navDivider} />
+          <div style={s.navItem} onClick={onOpenHelp}>📖 Инструкция</div>
           <div style={s.navItem} onClick={onGoHome}>🏠 На главную</div>
         </nav>
         <div style={s.sidebarBottom}>

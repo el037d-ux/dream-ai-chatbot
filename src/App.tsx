@@ -3,10 +3,11 @@ import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
 import BotBuilder from "@/pages/BotBuilder";
 import LandingBuilder from "@/pages/LandingBuilder";
+import HelpPage from "@/pages/HelpPage";
 import { api } from "@/api";
 import LandingPage from "@/pages/LandingPage";
 
-type Screen = "landing" | "auth" | "dashboard" | "builder" | "landingBuilder";
+type Screen = "landing" | "auth" | "dashboard" | "builder" | "landingBuilder" | "help";
 interface User { id: number; email: string; name: string; }
 
 export default function App() {
@@ -76,8 +77,11 @@ export default function App() {
   if (screen === "landingBuilder" && landingId && user) {
     return <LandingBuilder landingId={landingId} onBack={() => setScreen("dashboard")} />;
   }
+  if (screen === "help") {
+    return <HelpPage onBack={() => setScreen(user ? "dashboard" : "landing")} />;
+  }
   if (screen === "dashboard" && user) {
-    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} onOpenLanding={onOpenLanding} onGoHome={() => setScreen("landing")} />;
+    return <Dashboard user={user} onLogout={onLogout} onOpenBot={onOpenBot} onOpenLanding={onOpenLanding} onOpenHelp={() => setScreen("help")} onGoHome={() => setScreen("landing")} />;
   }
   if (screen === "auth") {
     return <AuthPage onAuth={onAuth} />;
